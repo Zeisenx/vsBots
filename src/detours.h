@@ -45,10 +45,12 @@ class CBasePlayerPawn;
 class CUserCmd;
 class CGamePlayerEquip;
 class InputData_t;
+class BotProfileManager;
 
 bool InitDetours(CGameConfig *gameConfig);
 void FlushAllDetours();
 
+void FASTCALL Detour_BotProfileManager_Init( BotProfileManager *botProfileManager, const char *filename, unsigned int *checksum );
 void FASTCALL Detour_UTIL_SayTextFilter(IRecipientFilter &, const char *, CCSPlayerController *, uint64);
 void FASTCALL Detour_UTIL_SayText2Filter(IRecipientFilter &, CCSPlayerController *, uint64, const char *, const char *, const char *, const char *, const char *);
 bool FASTCALL Detour_IsHearingClient(void*, int);

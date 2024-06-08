@@ -59,6 +59,7 @@ extern CUtlVector<CServerSideClient*>* GetClientList();
 
 CUtlVector<CDetourBase *> g_vecDetours;
 
+DECLARE_DETOUR(BotProfileManager_Init, Detour_BotProfileManager_Init);
 DECLARE_DETOUR(UTIL_SayTextFilter, Detour_UTIL_SayTextFilter);
 DECLARE_DETOUR(UTIL_SayText2Filter, Detour_UTIL_SayText2Filter);
 DECLARE_DETOUR(IsHearingClient, Detour_IsHearingClient);
@@ -533,6 +534,11 @@ CServerSideClient* FASTCALL Detour_GetFreeClient(int64_t unk1, const __m128i* un
 
 	// Server is actually full for real
 	return nullptr;
+}
+
+void FASTCALL Detour_BotProfileManager_Init(BotProfileManager* botProfileManager, const char *filename, unsigned int *checksum )
+{
+	BotProfileManager_Init(botProfileManager, "botprofileZP.db", checksum);
 }
 
 bool InitDetours(CGameConfig *gameConfig)
