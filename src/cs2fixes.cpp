@@ -45,6 +45,7 @@
 #include "gameconfig.h"
 #include "votemanager.h"
 #include "zombiereborn.h"
+#include "vsBots.h"
 #include "httpmanager.h"
 #include "idlemanager.h"
 #include "discord.h"
@@ -927,6 +928,8 @@ void CS2Fixes::OnLevelInit( char const *pMapName,
 
 	if (g_bEnableZR)
 		ZR_OnLevelInit();
+
+	vsBots_OnLevelInit(pMapName);
 }
 
 // Potentially might not work

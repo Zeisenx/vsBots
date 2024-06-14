@@ -25,6 +25,7 @@
 #include "networkstringtabledefs.h"
 #include "entity/cbaseplayercontroller.h"
 #include "entity/cgamerules.h"
+#include "vsBots.h"
 #include "zombiereborn.h"
 #include "votemanager.h"
 #include "leader.h"
@@ -123,6 +124,8 @@ GAME_EVENT_F(player_spawn)
 {
 	if (g_bEnableZR)
 		ZR_OnPlayerSpawn(pEvent);
+
+	vsBots_OnPlayerSpawn(pEvent);
 
 	CCSPlayerController *pController = (CCSPlayerController *)pEvent->GetPlayerController("userid");
 

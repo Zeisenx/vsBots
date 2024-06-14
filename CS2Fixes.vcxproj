@@ -200,6 +200,7 @@
     <ClCompile Include="src\playermanager.cpp" />
     <ClCompile Include="src\user_preferences.cpp" />
     <ClCompile Include="src\votemanager.cpp" />
+    <ClCompile Include="src\vsBots.cpp" />
     <ClCompile Include="src\zombiereborn.cpp" />
     <ClCompile Include="src\entitylistener.cpp" />
     <ClCompile Include="src\leader.cpp" />
@@ -220,6 +221,7 @@
     <ClInclude Include="src\cs2_sdk\entity\cbaseplayerpawn.h" />
     <ClInclude Include="src\cs2_sdk\entity\cbasetrigger.h" />
     <ClInclude Include="src\cs2_sdk\entity\ccollisionproperty.h" />
+    <ClInclude Include="src\cs2_sdk\entity\ccsbot.h" />
     <ClInclude Include="src\cs2_sdk\entity\ccsplayercontroller.h" />
     <ClInclude Include="src\cs2_sdk\entity\ccsplayerpawn.h" />
     <ClInclude Include="src\cs2_sdk\entity\ccsweaponbase.h" />
@@ -259,6 +261,7 @@
     <ClInclude Include="src\votemanager.h" />
     <ClInclude Include="src\map_votes.h" />
     <ClInclude Include="src\user_preferences.h" />
+    <ClInclude Include="src\vsBots.h" />
     <ClInclude Include="src\zombiereborn.h" />
     <ClInclude Include="src\entitylistener.h" />
     <ClInclude Include="src\leader.h" />
