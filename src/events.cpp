@@ -122,15 +122,12 @@ FAKE_BOOL_CVAR(cs2f_noblock_enable, "Whether to use noblock, which sets debris c
 
 GAME_EVENT_F(player_spawn)
 {
-	if (g_bEnableZR)
-		ZR_OnPlayerSpawn(pEvent);
-
-	vsBots_OnPlayerSpawn(pEvent);
-
 	CCSPlayerController *pController = (CCSPlayerController *)pEvent->GetPlayerController("userid");
 
 	if (!pController)
 		return;
+
+	vsBots_OnPlayerSpawn(pEvent);
 
 	ZEPlayer* pPlayer = pController->GetZEPlayer();
 

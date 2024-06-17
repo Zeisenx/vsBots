@@ -537,11 +537,11 @@ CServerSideClient* FASTCALL Detour_GetFreeClient(int64_t unk1, const __m128i* un
 	return nullptr;
 }
 
-<<<<<<< HEAD
 void FASTCALL Detour_BotProfileManager_Init(BotProfileManager* botProfileManager, const char *filename, unsigned int *checksum )
 {
 	BotProfileManager_Init(botProfileManager, "botprofileZP.db", checksum);
-=======
+}
+
 float FASTCALL Detour_CCSPlayerPawn_GetMaxSpeed(CCSPlayerPawn* pPawn)
 {
 	auto flMaxSpeed = CCSPlayerPawn_GetMaxSpeed(pPawn);
@@ -553,7 +553,6 @@ float FASTCALL Detour_CCSPlayerPawn_GetMaxSpeed(CCSPlayerPawn* pPawn)
 	}
 
 	return flMaxSpeed;
->>>>>>> upstream/main
 }
 
 bool InitDetours(CGameConfig *gameConfig)
