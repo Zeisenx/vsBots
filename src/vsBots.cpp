@@ -38,13 +38,6 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 	if (!pController->IsAlive())
 		return;
 	
-	if (!pController->IsBot())
-	{
-		CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
-		pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
-		return;
-	}
-
 	CHandle<CCSPlayerController> handle = pController->GetHandle();
 	new CTimer(0.05f, false, false, [handle]()
 	{
@@ -55,6 +48,13 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
 		if (!pPawn)
 			return -1.0f;
+
+		if (!pController->IsBot())
+		{
+			CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
+			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
+			return -1.0f;
+		}
 
 		const bool bIsPistolRound = pController->m_pInGameMoneyServices->m_iAccount <= 1000;
 
