@@ -20,6 +20,7 @@
 #pragma once
 
 #include "cbaseplayerpawn.h"
+#include "ccsbot.h"
 
 enum CSPlayerState
 {
@@ -61,5 +62,7 @@ public:
 	DECLARE_SCHEMA_CLASS(CCSPlayerPawn);
 
 	SCHEMA_FIELD(float, m_flVelocityModifier)
+	SCHEMA_FIELD(int32, m_ArmorValue);
 	SCHEMA_FIELD(CCSPlayer_ActionTrackingServices*, m_pActionTrackingServices)
+	SCHEMA_FIELD(CCSBot*, m_pBot)
 };

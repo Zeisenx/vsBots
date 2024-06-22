@@ -127,7 +127,7 @@ GAME_EVENT_F(player_spawn)
 	if (!pController)
 		return;
 
-	vsBots_OnPlayerSpawn(pEvent);
+	vsBots_OnPlayerSpawn(pController);
 
 	ZEPlayer* pPlayer = pController->GetZEPlayer();
 
