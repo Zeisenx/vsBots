@@ -228,6 +228,8 @@ GAME_EVENT_F(round_start)
 	if (g_bEnableZR)
 		ZR_OnRoundStart(pEvent);
 
+	vsBots_OnRoundStart(pEvent);
+
 	if (g_bEnableLeader)
 		Leader_OnRoundStart(pEvent);
 
@@ -253,6 +255,8 @@ GAME_EVENT_F(round_start)
 
 GAME_EVENT_F(round_end)
 {
+	vsBots_OnRoundEnd(pEvent);
+
 	if (g_bVoteManagerEnable)
 	{
 		ConVar* cvar = g_pCVar->GetConVar(g_pCVar->FindConVar("mp_timelimit"));

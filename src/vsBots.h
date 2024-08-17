@@ -21,4 +21,6 @@
 #pragma once
 
 void vsBots_OnLevelInit(char const* pMapName);
+void vsBots_OnRoundEnd(IGameEvent* pEvent);
+void vsBots_OnRoundStart(IGameEvent* pEvent);
 void vsBots_OnPlayerSpawn(CCSPlayerController *pController);
