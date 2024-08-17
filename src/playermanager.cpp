@@ -33,6 +33,7 @@
 #include "ctime"
 #include "leader.h"
 #include "tier0/vprof.h"
+#include "networksystem/inetworkmessages.h"
 
 #include "tier0/memdbgon.h"
 
@@ -173,7 +174,7 @@ void ZEPlayer::SpawnFlashLight()
 	origin.z += 64.0f;
 	origin += forward * g_flFlashLightDistance;
 
-	CBarnLight *pLight = (CBarnLight *)CreateEntityByName("light_barn");
+	CBarnLight *pLight = CreateEntityByName<CBarnLight>("light_barn");
 
 	pLight->m_bEnabled = true;
 	pLight->m_Color->SetColor(g_clrFlashLightColor[0], g_clrFlashLightColor[1], g_clrFlashLightColor[2]);
@@ -270,7 +271,7 @@ void ZEPlayer::StartBeacon(Color color, ZEPlayerHandle hGiver/* = 0*/)
 
 	vecAbsOrigin.z += 10;
 
-	CParticleSystem* particle = (CParticleSystem*)CreateEntityByName("info_particle_system");
+	CParticleSystem* particle = CreateEntityByName<CParticleSystem>("info_particle_system");
 
 	CEntityKeyValues* pKeyValues = new CEntityKeyValues();
 
@@ -392,8 +393,8 @@ void ZEPlayer::StartGlow(Color color, int duration)
 	
 	const char *pszModelName = pPawn->GetModelName();
 	
-	CBaseModelEntity *pModelGlow = (CBaseModelEntity*)CreateEntityByName("prop_dynamic");
-	CBaseModelEntity *pModelRelay = (CBaseModelEntity*)CreateEntityByName("prop_dynamic");
+	CBaseModelEntity *pModelGlow = CreateEntityByName<CBaseModelEntity>("prop_dynamic");
+	CBaseModelEntity *pModelRelay = CreateEntityByName<CBaseModelEntity>("prop_dynamic");
 	CEntityKeyValues *pKeyValuesRelay = new CEntityKeyValues();
 	
 	pKeyValuesRelay->SetString("model", pszModelName);
@@ -488,6 +489,19 @@ void ZEPlayer::EndGlow()
 
 	if (pModelParent)
 		addresses::UTIL_Remove(pModelParent);
+}
+
+void ZEPlayer::ReplicateConVar(const char* pszName, const char* pszValue)
+{
+	INetworkMessageInternal* pNetMsg = g_pNetworkMessages->FindNetworkMessagePartial("SetConVar");
+	auto data = pNetMsg->AllocateMessage()->ToPB<CNETMsg_SetConVar>();
+
+	CMsg_CVars_CVar* cvarMsg = data->mutable_convars()->add_cvars();
+	cvarMsg->set_name(pszName);
+	cvarMsg->set_value(pszValue);
+
+	GetClientBySlot(GetPlayerSlot())->GetNetChannel()->SendNetMessage(data, BUF_RELIABLE);
+	delete data;
 }
 
 void CPlayerManager::OnBotConnected(CPlayerSlot slot)
@@ -864,7 +878,7 @@ ETargetType CPlayerManager::TargetPlayerString(int iCommandClient, const char* t
 
 			CCSPlayerController* player = CCSPlayerController::FromSlot(i);
 
-			if (!player || !player->IsController() || !player->IsConnected())
+			if (!player || !player->IsController() || !player->IsConnected() || player->m_bIsHLTV)
 				continue;
 
 			clients[iNumClients++] = i;
@@ -879,7 +893,7 @@ ETargetType CPlayerManager::TargetPlayerString(int iCommandClient, const char* t
 
 			CCSPlayerController* player = CCSPlayerController::FromSlot(i);
 
-			if (!player || !player->IsController() || !player->IsConnected())
+			if (!player || !player->IsController() || !player->IsConnected() || player->m_bIsHLTV)
 				continue;
 
 			if (player->m_iTeamNum() != (targetType == ETargetType::T ? CS_TEAM_T : targetType == ETargetType::CT ? CS_TEAM_CT : CS_TEAM_SPECTATOR))
@@ -904,7 +918,7 @@ ETargetType CPlayerManager::TargetPlayerString(int iCommandClient, const char* t
 
 			CCSPlayerController* player = CCSPlayerController::FromSlot(slot);
 
-			if (!player || !player->IsController() || !player->IsConnected())
+			if (!player || !player->IsController() || !player->IsConnected() || player->m_bIsHLTV)
 				continue;
 
 			if (targetType >= ETargetType::RANDOM_T && (player->m_iTeamNum() != (targetType == ETargetType::RANDOM_T ? CS_TEAM_T : CS_TEAM_CT)))
@@ -921,7 +935,7 @@ ETargetType CPlayerManager::TargetPlayerString(int iCommandClient, const char* t
 		{
 			targetType = ETargetType::PLAYER;
 			CCSPlayerController* player = CCSPlayerController::FromSlot(GetSlotFromUserId(userid).Get());
-			if(player && player->IsController() && player->IsConnected())
+			if(player && player->IsController() && player->IsConnected() && !player->m_bIsHLTV)
 				clients[iNumClients++] = GetSlotFromUserId(userid).Get();
 		}
 	}
@@ -934,7 +948,7 @@ ETargetType CPlayerManager::TargetPlayerString(int iCommandClient, const char* t
 
 			CCSPlayerController* player = CCSPlayerController::FromSlot(i);
 
-			if (!player || !player->IsController() || !player->IsConnected())
+			if (!player || !player->IsController() || !player->IsConnected() || player->m_bIsHLTV)
 				continue;
 
 			if (V_stristr(player->GetPlayerName(), target))
