@@ -9,6 +9,8 @@
 
 extern IVEngineServer2* g_pEngineServer2;
 
+#define BOSSMODEL_DEFAULT "characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl"
+
 const int DIFFICULTY_MIN = 1;
 const int DIFFICULTY_MAX = 12;
 
@@ -41,6 +43,11 @@ void vsBots_OnLevelInit(char const* pMapName)
 	}
 }
 
+void vsBots_Precache(IEntityResourceManifest* pResourceManifest)
+{
+	pResourceManifest->AddResource(BOSSMODEL_DEFAULT);
+}
+
 void vsBots_OnRoundStart(IGameEvent* pEvent)
 {
 	g_pEngineServer2->ServerCommand("bot_difficulty 3");
@@ -55,11 +62,11 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 	
 	int oldLevel = g_difficulty;
 	if (winner == g_humanTeam)
-		g_difficulty = MAX(DIFFICULTY_MAX, g_difficulty + 1);
+		g_difficulty = MIN(DIFFICULTY_MAX, g_difficulty + 1);
 	else
-		g_difficulty = MIN(DIFFICULTY_MIN, g_difficulty - 1);
+		g_difficulty = MAX(DIFFICULTY_MIN, g_difficulty - 1);
 
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_difficulty);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d -> %d", oldLevel, g_difficulty);
 }
 
 void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
@@ -94,7 +101,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		pBot->m_hasVisitedEnemySpawn = true; // it makes bot doesn't rush to enemy spawn
 		if (strncmp(pBot->m_name, "[Boss]", 6) == 0)
 		{
-			pPawn->SetModel("characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl");
+			pPawn->SetModel(BOSSMODEL_DEFAULT);
 			pPawn->m_ArmorValue = 9999;
 			pPawn->m_pItemServices->m_bHasHelmet = true;
 
@@ -108,19 +115,19 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 				pPawn->m_pItemServices->GiveNamedItem("weapon_xm1014");
 			pController->m_iScore = 100;
 
-			pPawn->m_clrRender = Color(255, 0, 0);
+			pPawn->m_clrRender = Color(255, 0, 0, 255);
 		}
 
 		if (strcmp(pBot->m_name, "[Boss] Stone") == 0)
 		{
-			pPawn->m_clrRender = Color(0, 0, 0);
+			pPawn->m_clrRender = Color(0, 0, 0, 255);
 			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_difficulty) - 1));
 			pPawn->m_iHealth = 599 * g_difficulty * 400;
 		}
 
 		if (strcmp(pBot->m_name, "[Boss] Exp203") == 0)
 		{
-			pPawn->m_clrRender = Color(0, 255, 0);
+			pPawn->m_clrRender = Color(0, 255, 0, 255);
 			pPawn->m_iHealth = 203;
 		}
 

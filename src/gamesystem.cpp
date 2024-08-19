@@ -28,6 +28,7 @@
 #include "entities.h"
 #include "tier0/vprof.h"
 #include "idlemanager.h"
+#include "vsBots.h"
 
 #include "tier0/memdbgon.h"
 
@@ -78,6 +79,7 @@ GS_EVENT_MEMBER(CGameSystem, BuildGameSessionManifest)
 	// Any resource adding MUST be done here, the resource manifest is not long-lived
 	// pResourceManifest->AddResource("characters/models/my_character_model.vmdl");
 
+	vsBots_Precache(pResourceManifest);
 	ZR_Precache(pResourceManifest);
 	PrecacheBeaconParticle(pResourceManifest);
 	Leader_Precache(pResourceManifest);
