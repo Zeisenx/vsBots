@@ -18,22 +18,22 @@ extern IVEngineServer2* g_pEngineServer2;
 #define ITEMDEFINDEX_MOLOTOV 46
 #define ITEMDEFINDEX_INCGRENADE 48
 
-const int DIFFICULTY_MIN = 1;
+const int DIFFICULTY_MIN = 0;
 const int DIFFICULTY_MAX = 12;
 
 int g_difficulty = 1;
 int g_humanTeam = CS_TEAM_CT;
-int g_zombieTeam = CS_TEAM_T;
+int g_botTeam = CS_TEAM_T;
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
 FAKE_INT_CVAR(vsbots_humanteam, "Human Team", g_humanTeam, false, false)
-FAKE_INT_CVAR(vsbots_zombieteam, "Zombie Team", g_zombieTeam, false, false)
+FAKE_INT_CVAR(vsbots_botteam, "Zombie Team", g_botTeam, false, false)
 
 void vsBots_OnLevelInit(char const* pMapName)
 {
 	if (strncmp(pMapName, "de_", 3) == 0)
 	{
 		g_humanTeam = CS_TEAM_T;
-		g_zombieTeam = CS_TEAM_CT;
+		g_botTeam = CS_TEAM_CT;
 
 		g_pEngineServer2->ServerCommand("mp_humanteam t");
 		g_pEngineServer2->ServerCommand("mp_teamname_1 \"인간 학살 팀\"");
@@ -42,7 +42,7 @@ void vsBots_OnLevelInit(char const* pMapName)
 	else
 	{
 		g_humanTeam = CS_TEAM_CT;
-		g_zombieTeam = CS_TEAM_T;
+		g_botTeam = CS_TEAM_T;
 
 		g_pEngineServer2->ServerCommand("mp_humanteam ct");
 		g_pEngineServer2->ServerCommand("mp_teamname_2 \"인간 학살 팀\"");
@@ -131,6 +131,11 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		if (!pPawn)
 			return -1.0f;
 
+		if (pController->m_iTeamNum == g_humanTeam)
+		{
+			pPawn->m_iHealth = g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1));
+		}
+
 		if (!pController->IsBot())
 		{
 			CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
@@ -146,12 +151,19 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			return -1.0f;
 		}
 
+
+		CCSBot* pBot = pPawn->m_pBot;
+		if (pController->m_iTeamNum == g_humanTeam && strncmp(pBot->m_name, "[Human]", 7) != 0)
+		{
+			pController->SwitchTeam(g_botTeam);
+			return -1.0f;
+		}
+
 		const bool bIsPistolRound = pController->m_pInGameMoneyServices->m_iAccount <= 1000;
 
 		if (!bIsPistolRound)
 			pController->m_pInGameMoneyServices->m_iAccount = 16000;
 
-		CCSBot *pBot = pPawn->m_pBot;
 		pBot->m_hasVisitedEnemySpawn = true; // it makes bot doesn't rush to enemy spawn
 		if (strncmp(pBot->m_name, "[Boss]", 6) == 0)
 		{
