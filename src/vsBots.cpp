@@ -165,7 +165,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		{
 			pPawn->m_clrRender = Color(0, 0, 0, 255);
 			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_difficulty) - 1));
-			pPawn->m_iHealth = 599 * g_difficulty * 400;
+			pPawn->m_iHealth = 599 + g_difficulty * 400;
 		}
 
 		if (strcmp(pBot->m_name, "[Boss] Exp203") == 0)
