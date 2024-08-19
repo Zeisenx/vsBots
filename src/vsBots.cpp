@@ -11,6 +11,13 @@ extern IVEngineServer2* g_pEngineServer2;
 
 #define BOSSMODEL_DEFAULT "characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl"
 
+#define ITEMDEFINDEX_G3SG1 11
+#define ITEMDEFINDEX_NEGEV 28
+#define ITEMDEFINDEX_SCAR20 38
+#define ITEMDEFINDEX_SMOKEGRENADE 45
+#define ITEMDEFINDEX_MOLOTOV 46
+#define ITEMDEFINDEX_INCGRENADE 48
+
 const int DIFFICULTY_MIN = 1;
 const int DIFFICULTY_MAX = 12;
 
@@ -41,6 +48,8 @@ void vsBots_OnLevelInit(char const* pMapName)
 		g_pEngineServer2->ServerCommand("mp_teamname_2 \"인간 학살 팀\"");
 		g_pEngineServer2->ServerCommand("mp_teamname_1 \"꿈도 희망도 없는 팀\"");
 	}
+
+	g_pEngineServer2->ServerCommand("exec cs2fixes/vsbots");
 }
 
 void vsBots_Precache(IEntityResourceManifest* pResourceManifest)
@@ -66,7 +75,33 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 	else
 		g_difficulty = MAX(DIFFICULTY_MIN, g_difficulty - 1);
 
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d -> %d", oldLevel, g_difficulty);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_difficulty);
+}
+
+void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex)
+{
+	CUtlVector<WeaponPurchaseCount_t>* weaponPurchases = pPawn->m_pActionTrackingServices->m_weaponPurchasesThisRound().m_weaponPurchases;
+	bool found = false;
+	FOR_EACH_VEC(*weaponPurchases, i)
+	{
+		WeaponPurchaseCount_t& purchase = (*weaponPurchases)[i];
+		if (purchase.m_nItemDefIndex == itemDefIndex)
+		{
+			purchase.m_nCount += 999;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+	{
+		WeaponPurchaseCount_t purchase = {};
+
+		purchase.m_nCount = 999;
+		purchase.m_nItemDefIndex = itemDefIndex;
+
+		weaponPurchases->AddToTail(purchase);
+	}
 }
 
 void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
@@ -89,6 +124,14 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		{
 			CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
 			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
+
+			RestrictWeapon(pPawn, ITEMDEFINDEX_G3SG1);
+			RestrictWeapon(pPawn, ITEMDEFINDEX_SCAR20);
+			RestrictWeapon(pPawn, ITEMDEFINDEX_NEGEV);
+			RestrictWeapon(pPawn, ITEMDEFINDEX_SMOKEGRENADE);
+			RestrictWeapon(pPawn, ITEMDEFINDEX_MOLOTOV);
+			RestrictWeapon(pPawn, ITEMDEFINDEX_INCGRENADE);
+
 			return -1.0f;
 		}
 
@@ -133,4 +176,22 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 
 		return -1.0f;
 	});
+}
+
+void vsBots_OnPlayerDeath(IGameEvent* pEvent)
+{
+	CCSPlayerController* pAttacker = (CCSPlayerController*)pEvent->GetPlayerController("attacker");
+	CCSPlayerController* pVictim = (CCSPlayerController*)pEvent->GetPlayerController("userid");
+
+	if (!pAttacker || !pVictim)
+		return;
+
+	if (pVictim->IsBot())
+	{
+		if (strncmp(pVictim->GetPlayerName(), "[Boss]", 6) == 0)
+		{
+			ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Boss Kill]\x0C %s 유저\x01가 \x02%s 보스를 처치했습니다!",
+				pAttacker->GetPlayerName(), pVictim->GetPlayerName());
+		}
+	}
 }

@@ -25,3 +25,4 @@ void vsBots_Precache(IEntityResourceManifest* pResourceManifest);
 void vsBots_OnRoundStart(IGameEvent* pEvent);
 void vsBots_OnRoundEnd(IGameEvent* pEvent);
 void vsBots_OnPlayerSpawn(CCSPlayerController *pController);
+void vsBots_OnPlayerDeath(IGameEvent* pEvent);

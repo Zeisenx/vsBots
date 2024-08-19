@@ -200,6 +200,8 @@ GAME_EVENT_F(player_death)
 	if (g_bEnableZR)
 		ZR_OnPlayerDeath(pEvent);
 
+	vsBots_OnPlayerDeath(pEvent);
+
 	if (!g_bEnableTopDefender)
 		return;
 
