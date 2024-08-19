@@ -78,6 +78,17 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_difficulty);
 }
 
+bool vsBots_IsBotHeadOnly(CCSPlayerController* pBot)
+{
+	if (g_difficulty >= 7)
+		return true;
+	
+	if (strncmp(pBot->GetPlayerName(), "[Human]", 7) == 0)
+		return true;
+
+	return false;
+}
+
 void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex)
 {
 	CUtlVector<WeaponPurchaseCount_t>* weaponPurchases = pPawn->m_pActionTrackingServices->m_weaponPurchasesThisRound().m_weaponPurchases;

@@ -48,6 +48,7 @@
 #include "networksystem/inetworkserializer.h"
 #include "map_votes.h"
 #include "tier0/vprof.h"
+#include "vsBots.h"
 
 #include "tier0/memdbgon.h"
 
@@ -61,6 +62,7 @@ extern CUtlVector<CServerSideClient*>* GetClientList();
 CUtlVector<CDetourBase *> g_vecDetours;
 
 DECLARE_DETOUR(BotProfileManager_Init, Detour_BotProfileManager_Init);
+DECLARE_DETOUR(CCSBot_GetPartPosition, Detour_CCSBot_GetPartPosition);
 DECLARE_DETOUR(UTIL_SayTextFilter, Detour_UTIL_SayTextFilter);
 DECLARE_DETOUR(UTIL_SayText2Filter, Detour_UTIL_SayText2Filter);
 DECLARE_DETOUR(IsHearingClient, Detour_IsHearingClient);
@@ -546,6 +548,16 @@ CServerSideClient* FASTCALL Detour_GetFreeClient(int64_t unk1, const __m128i* un
 void FASTCALL Detour_BotProfileManager_Init(BotProfileManager* botProfileManager, const char *filename, unsigned int *checksum )
 {
 	BotProfileManager_Init(botProfileManager, "botprofileZP.db", checksum);
+}
+
+void FASTCALL Detour_CCSBot_GetPartPosition(CCSPlayerController* pBot, CCSPlayerController* pPlayer, unsigned int part)
+{
+	// Makes gut to head. This is temporary solution, 
+	// Should detour CCSBot::PickNewAimSpot, and changes m_targetSpot vector to player head in future design
+	if (part == 1 && vsBots_IsBotHeadOnly(pBot))
+		part = 2;
+
+	CCSBot_GetPartPosition(pBot, pPlayer, part);
 }
 
 float FASTCALL Detour_CCSPlayerPawn_GetMaxSpeed(CCSPlayerPawn* pPawn)
