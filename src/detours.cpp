@@ -550,7 +550,7 @@ void FASTCALL Detour_BotProfileManager_Init(BotProfileManager* botProfileManager
 	BotProfileManager_Init(botProfileManager, "botprofileZP.db", checksum);
 }
 
-Vector* FASTCALL Detour_CCSBot_GetPartPosition(CCSPlayerController* pBot, CCSPlayerController* pPlayer, unsigned int part)
+char* FASTCALL Detour_CCSBot_GetPartPosition(CCSBot* pBot, CCSPlayerPawn* pPlayer, unsigned int part)
 {
 	// Makes gut to head. This is temporary solution, 
 	// Should detour CCSBot::PickNewAimSpot, and changes m_targetSpot vector to player head in future design

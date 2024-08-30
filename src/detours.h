@@ -47,12 +47,13 @@ class CGamePlayerEquip;
 class InputData_t;
 class BotProfileManager;
 class CCSPlayerPawn;
+class CCSBot;
 
 bool InitDetours(CGameConfig *gameConfig);
 void FlushAllDetours();
 
 void FASTCALL Detour_BotProfileManager_Init( BotProfileManager *botProfileManager, const char *filename, unsigned int *checksum );
-Vector* FASTCALL Detour_CCSBot_GetPartPosition(CCSPlayerController* pBot, CCSPlayerController *pPlayer, unsigned int part);
+char* FASTCALL Detour_CCSBot_GetPartPosition(CCSBot* pBot, CCSPlayerPawn* pPlayer, unsigned int part);
 void FASTCALL Detour_UTIL_SayTextFilter(IRecipientFilter &, const char *, CCSPlayerController *, uint64);
 void FASTCALL Detour_UTIL_SayText2Filter(IRecipientFilter &, CCSPlayerController *, uint64, const char *, const char *, const char *, const char *, const char *);
 bool FASTCALL Detour_IsHearingClient(void*, int);

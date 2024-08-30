@@ -26,7 +26,7 @@ int g_humanTeam = CS_TEAM_CT;
 int g_botTeam = CS_TEAM_T;
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
 FAKE_INT_CVAR(vsbots_humanteam, "Human Team", g_humanTeam, false, false)
-FAKE_INT_CVAR(vsbots_botteam, "Zombie Team", g_botTeam, false, false)
+FAKE_INT_CVAR(vsbots_botteam, "Bot Team", g_botTeam, false, false)
 
 void vsBots_OnLevelInit(char const* pMapName)
 {
@@ -78,12 +78,12 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_difficulty);
 }
 
-bool vsBots_IsBotHeadOnly(CCSPlayerController* pBot)
+bool vsBots_IsBotHeadOnly(CCSBot* pBot)
 {
 	if (g_difficulty >= 7)
 		return true;
 	
-	if (strncmp(pBot->GetPlayerName(), "[Human]", 7) == 0)
+	if (strncmp(pBot->m_name, "[Human]", 7) == 0)
 		return true;
 
 	return false;
