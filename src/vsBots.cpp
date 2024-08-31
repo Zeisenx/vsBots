@@ -229,51 +229,40 @@ bool vsBots_Hook_OnTakeDamage_Alive(CTakeDamageInfo* pInfo, CCSPlayerPawn* pVict
 		}
 	}
 
-	return false;
-}
-
-void vsBots_OnPlayerHurt(IGameEvent* pEvent)
-{
-	CCSPlayerController* pAttacker = (CCSPlayerController*)pEvent->GetPlayerController("attacker");
-	CCSPlayerController* pVictim = (CCSPlayerController*)pEvent->GetPlayerController("userid");
-
-	if (!pAttacker || !pVictim)
-		return;
-
-	if (pVictim->IsBot())
+	if (pVictimController->IsBot())
 	{
-		if (strcmp(pVictim->GetPlayerName(), "[Boss] Crusher") == 0)
+		if (strcmp(pVictimController->GetPlayerName(), "[Boss] Crusher") == 0)
 		{
 			float regenTime = 0.2f;
 			if (g_difficulty >= 4) regenTime = 0.15f;
 			if (g_difficulty >= 8) regenTime = 0.1f;
 
-			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
+			CHandle<CCSPlayerController> victimHandle = pVictimController->GetHandle();
 			new CTimer(regenTime, false, false, [victimHandle]()
-			{
-				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
-				if (!pVictim || !pVictim->IsAlive())
-					return -1.0f;
+				{
+					CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
+					if (!pVictim || !pVictim->IsAlive())
+						return -1.0f;
 
-				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
-				if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
-					return -1.0f;
+					CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
+					if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
+						return -1.0f;
 
-				pVictimPawn->m_iHealth = pVictimPawn->m_iMaxHealth;
-			});
+					pVictimPawn->m_iHealth = pVictimPawn->m_iMaxHealth;
+				});
 		}
 
 
-		if (strcmp(pVictim->GetPlayerName(), "[Boss] Stone") == 0)
+		if (strcmp(pVictimController->GetPlayerName(), "[Boss] Stone") == 0)
 		{
-			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
+			CHandle<CCSPlayerController> victimHandle = pVictimController->GetHandle();
 			new CTimer(0.0f, false, false, [victimHandle]()
 			{
-				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
-				if (!pVictim || !pVictim->IsAlive())
+				CCSPlayerController* pVictimController = (CCSPlayerController*)victimHandle.Get();
+				if (!pVictimController || !pVictimController->IsAlive())
 					return -1.0f;
 
-				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
+				CCSPlayerPawn* pVictimPawn = pVictimController->GetPlayerPawn();
 				if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
 					return -1.0f;
 
@@ -288,6 +277,17 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 			});
 		}
 	}
+
+	return false;
+}
+
+void vsBots_OnPlayerHurt(IGameEvent* pEvent)
+{
+	CCSPlayerController* pAttacker = (CCSPlayerController*)pEvent->GetPlayerController("attacker");
+	CCSPlayerController* pVictim = (CCSPlayerController*)pEvent->GetPlayerController("userid");
+
+	if (!pAttacker || !pVictim)
+		return;
 }
 
 void vsBots_OnPlayerDeath(IGameEvent* pEvent)
