@@ -23,7 +23,10 @@
 void vsBots_OnLevelInit(char const* pMapName);
 void vsBots_Precache(IEntityResourceManifest* pResourceManifest);
 void vsBots_OnRoundStart(IGameEvent* pEvent);
+void vsBots_OnRoundFreezeEnd(IGameEvent* pEvent);
 void vsBots_OnRoundEnd(IGameEvent* pEvent);
 void vsBots_OnPlayerSpawn(CCSPlayerController *pController);
+void vsBots_OnPlayerHurt(IGameEvent* pEvent);
 void vsBots_OnPlayerDeath(IGameEvent* pEvent);
 bool vsBots_IsBotHeadOnly(CCSBot* pBot);
+bool vsBots_Hook_OnTakeDamage_Alive(CTakeDamageInfo* pInfo, CCSPlayerPawn* pVictimPawn);

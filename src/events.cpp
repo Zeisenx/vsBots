@@ -173,6 +173,8 @@ FAKE_BOOL_CVAR(cs2f_topdefender_enable, "Whether to use TopDefender", g_bEnableT
 
 GAME_EVENT_F(player_hurt)
 {
+	vsBots_OnPlayerHurt(pEvent);
+
 	if (g_bEnableZR)
 		ZR_OnPlayerHurt(pEvent);
 
@@ -329,6 +331,8 @@ GAME_EVENT_F(round_freeze_end)
 {
 	if (g_bEnableZR)
 		ZR_OnRoundFreezeEnd(pEvent);
+
+	vsBots_OnRoundFreezeEnd(pEvent);
 }
 
 GAME_EVENT_F(round_time_warning)

@@ -21,7 +21,7 @@ extern IVEngineServer2* g_pEngineServer2;
 const int DIFFICULTY_MIN = 0;
 const int DIFFICULTY_MAX = 12;
 
-int g_difficulty = 1;
+int g_difficulty = 0;
 int g_humanTeam = CS_TEAM_CT;
 int g_botTeam = CS_TEAM_T;
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
@@ -61,6 +61,13 @@ void vsBots_OnRoundStart(IGameEvent* pEvent)
 {
 	g_pEngineServer2->ServerCommand("bot_difficulty 3");
 	g_pEngineServer2->ServerCommand("mp_flinch_punch_scale 0.0");
+}
+
+void vsBots_OnRoundFreezeEnd(IGameEvent* pEvent)
+{
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Zeisen Project Discord]\x01 https://discord.gg/tDZUnpaumD");
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Bot Level]\x01 %d", g_difficulty);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Weapon Restrict]\x01 소이탄(Molotov/Incendiary), 연막탄(Smokegrenade), 네게브(Negev), 딱딱이(G3SG1, SCAR-20)은 \x02금지\x01되어 있습니다.");
 }
 
 void vsBots_OnRoundEnd(IGameEvent* pEvent)
@@ -134,12 +141,12 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		if (pController->m_iTeamNum == g_humanTeam)
 		{
 			pPawn->m_iHealth = g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1));
+			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
 		}
 
 		if (!pController->IsBot())
 		{
 			CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
-			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
 
 			RestrictWeapon(pPawn, ITEMDEFINDEX_G3SG1);
 			RestrictWeapon(pPawn, ITEMDEFINDEX_SCAR20);
@@ -156,6 +163,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		if (pController->m_iTeamNum == g_humanTeam && strncmp(pBot->m_name, "[Human]", 7) != 0)
 		{
 			pController->SwitchTeam(g_botTeam);
+			pPawn->CommitSuicide(false, false);
 			return -1.0f;
 		}
 
@@ -199,6 +207,56 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 
 		return -1.0f;
 	});
+}
+
+bool vsBots_Hook_OnTakeDamage_Alive(CTakeDamageInfo* pInfo, CCSPlayerPawn* pVictimPawn)
+{
+	CCSPlayerPawn* pAttackerPawn = (CCSPlayerPawn*)pInfo->m_hAttacker.Get();
+
+	if (!(pAttackerPawn && pVictimPawn && pAttackerPawn->IsPawn() && pVictimPawn->IsPawn()))
+		return false;
+
+	CCSPlayerController* pAttackerController = CCSPlayerController::FromPawn(pAttackerPawn);
+	CCSPlayerController* pVictimController = CCSPlayerController::FromPawn(pVictimPawn);
+	if (pAttackerController->IsBot())
+	{
+		if ((g_difficulty >= 1 && strcmp(pAttackerController->GetPlayerName(), "[Boss] Crusher") == 0) ||
+			strcmp(pAttackerController->GetPlayerName(), "[Boss] Stone") == 0)
+		{
+			pInfo->m_flDamage = 9999.0;
+		}
+	}
+
+	return false;
+}
+
+void vsBots_OnPlayerHurt(IGameEvent* pEvent)
+{
+	CCSPlayerController* pAttacker = (CCSPlayerController*)pEvent->GetPlayerController("attacker");
+	CCSPlayerController* pVictim = (CCSPlayerController*)pEvent->GetPlayerController("userid");
+
+	if (!pAttacker || !pVictim)
+		return;
+
+	if (pVictim->IsBot())
+	{
+		if (strcmp(pVictim->GetPlayerName(), "[Boss] Crusher") == 0)
+		{
+			float regenTime = 0.2f;
+			if (g_difficulty >= 4) regenTime = 0.15f;
+			if (g_difficulty >= 8) regenTime = 0.1f;
+
+			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
+			new CTimer(regenTime, false, false, [victimHandle]()
+			{
+				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
+				if (!pVictim)
+					return -1.0f;
+
+				pVictim->m_iHealth = pVictim->m_iMaxHealth;
+			});
+		}
+	}
 }
 
 void vsBots_OnPlayerDeath(IGameEvent* pEvent)
