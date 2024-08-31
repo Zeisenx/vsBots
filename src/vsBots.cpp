@@ -255,7 +255,11 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 				if (!pVictim)
 					return -1.0f;
 
-				pVictim->m_iHealth = pVictim->m_iMaxHealth;
+				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
+				if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
+					return -1.0f;
+
+				pVictimPawn->m_iHealth = pVictimPawn->m_iMaxHealth;
 			});
 		}
 
