@@ -252,7 +252,7 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 			new CTimer(regenTime, false, false, [victimHandle]()
 			{
 				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
-				if (!pVictim)
+				if (!pVictim || !pVictim->IsAlive())
 					return -1.0f;
 
 				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
@@ -270,7 +270,7 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 			new CTimer(0.0f, false, false, [victimHandle]()
 			{
 				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
-				if (!pVictim)
+				if (!pVictim || !pVictim->IsAlive())
 					return -1.0f;
 
 				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
