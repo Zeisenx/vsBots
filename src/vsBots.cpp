@@ -197,6 +197,8 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pPawn->m_clrRender = Color(0, 0, 0, 255);
 			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_difficulty) - 1));
 			pPawn->m_iHealth = 599 + g_difficulty * 400;
+
+			pController->GetZEPlayer()->SetSpeedMod(1.0 + g_difficulty * 0.03);
 		}
 
 		if (strcmp(pBot->m_name, "[Boss] Exp203") == 0)
@@ -254,6 +256,31 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 					return -1.0f;
 
 				pVictim->m_iHealth = pVictim->m_iMaxHealth;
+			});
+		}
+
+
+		if (strcmp(pVictim->GetPlayerName(), "[Boss] Stone") == 0)
+		{
+			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
+			new CTimer(0.0f, false, false, [victimHandle]()
+			{
+				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
+				if (!pVictim)
+					return -1.0f;
+
+				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
+				if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
+					return -1.0f;
+
+				CPlayer_MovementServices* pMovementService = pVictimPawn->m_pMovementServices;
+				CCSPlayer_MovementServices* pStaminaService = (CCSPlayer_MovementServices*)pMovementService;
+
+				if (!pMovementService || !pStaminaService)
+					return -1.0f;
+
+				pVictimPawn->m_flVelocityModifier = 1.0;
+				pStaminaService->m_flStamina = 0.0;
 			});
 		}
 	}
