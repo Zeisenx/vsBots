@@ -10,6 +10,7 @@ on:
     - LICENSE
     - README.md
     - 'configs**'
+    - 'scripts**'
     - '**.sln'
     - '**.vcxproj**'
   pull_request:
@@ -17,6 +18,7 @@ on:
     - LICENSE
     - README.md
     - 'configs**'
+    - 'scripts**'
     - '**.sln'
     - '**.vcxproj**'
 
