@@ -30,3 +30,4 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent);
 void vsBots_OnPlayerDeath(IGameEvent* pEvent);
 bool vsBots_IsBotHeadOnly(CCSBot* pBot);
 bool vsBots_Hook_OnTakeDamage_Alive(CTakeDamageInfo* pInfo, CCSPlayerPawn* pVictimPawn);
+void vsBots_LoadBotNames();

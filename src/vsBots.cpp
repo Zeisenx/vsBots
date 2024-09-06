@@ -6,6 +6,7 @@
 #include "vsBots.h"
 #include "ctimer.h"
 #include "utils/entity.h"
+#include <fstream>
 
 extern IVEngineServer2* g_pEngineServer2;
 
@@ -27,6 +28,7 @@ int g_botTeam = CS_TEAM_T;
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
 FAKE_INT_CVAR(vsbots_humanteam, "Human Team", g_humanTeam, false, false)
 FAKE_INT_CVAR(vsbots_botteam, "Bot Team", g_botTeam, false, false)
+std::vector<std::string> g_vecBotNamesList;
 
 void vsBots_OnLevelInit(char const* pMapName)
 {
@@ -50,7 +52,26 @@ void vsBots_OnLevelInit(char const* pMapName)
 	}
 
 	g_pEngineServer2->ServerCommand("exec cs2fixes/vsbots");
+
+	vsBots_LoadBotNames();
 }
+
+
+void vsBots_LoadBotNames()
+{
+	Message("vsBots_LoadBotNames()");
+	g_vecBotNamesList.clear();
+	const char* pszFilePath = "addons/cs2fixes/configs/vsBots/botnames.txt";
+	char szPath[MAX_PATH];
+	V_snprintf(szPath, sizeof(szPath), "%s%s%s", Plat_GetGameDirectory(), "/csgo/", pszFilePath);
+	std::ifstream infile(szPath);
+	std::string botName;
+	while (std::getline(infile, botName))
+	{
+		g_vecBotNamesList.push_back(botName);
+	}
+}
+
 
 void vsBots_Precache(IEntityResourceManifest* pResourceManifest)
 {
@@ -61,6 +82,13 @@ void vsBots_OnRoundStart(IGameEvent* pEvent)
 {
 	g_pEngineServer2->ServerCommand("bot_difficulty 3");
 	g_pEngineServer2->ServerCommand("mp_flinch_punch_scale 0.0");
+
+	for (auto& name : g_vecBotNamesList)
+	{
+		char szBotAddCmd[128];
+		V_snprintf(szBotAddCmd, sizeof(szBotAddCmd), "bot_add_%s \"%s\"", g_botTeam == CS_TEAM_T ? "t" : "ct", name.c_str());
+		g_pEngineServer2->ServerCommand(szBotAddCmd);
+	}
 }
 
 void vsBots_OnRoundFreezeEnd(IGameEvent* pEvent)
@@ -229,40 +257,51 @@ bool vsBots_Hook_OnTakeDamage_Alive(CTakeDamageInfo* pInfo, CCSPlayerPawn* pVict
 		}
 	}
 
-	if (pVictimController->IsBot())
+	return false;
+}
+
+void vsBots_OnPlayerHurt(IGameEvent* pEvent)
+{
+	CCSPlayerController* pAttacker = (CCSPlayerController*)pEvent->GetPlayerController("attacker");
+	CCSPlayerController* pVictim = (CCSPlayerController*)pEvent->GetPlayerController("userid");
+
+	if (!pAttacker || !pVictim)
+		return;
+
+	if (pVictim->IsBot())
 	{
-		if (strcmp(pVictimController->GetPlayerName(), "[Boss] Crusher") == 0)
+		if (strcmp(pVictim->GetPlayerName(), "[Boss] Crusher") == 0)
 		{
 			float regenTime = 0.2f;
 			if (g_difficulty >= 4) regenTime = 0.15f;
 			if (g_difficulty >= 8) regenTime = 0.1f;
 
-			CHandle<CCSPlayerController> victimHandle = pVictimController->GetHandle();
+			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
 			new CTimer(regenTime, false, false, [victimHandle]()
-				{
-					CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
-					if (!pVictim || !pVictim->IsAlive())
-						return -1.0f;
+			{
+				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
+				if (!pVictim || !pVictim->IsAlive())
+					return -1.0f;
 
-					CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
-					if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
-						return -1.0f;
+				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
+				if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
+					return -1.0f;
 
-					pVictimPawn->m_iHealth = pVictimPawn->m_iMaxHealth;
-				});
+				pVictimPawn->m_iHealth = pVictimPawn->m_iMaxHealth;
+			});
 		}
 
 
-		if (strcmp(pVictimController->GetPlayerName(), "[Boss] Stone") == 0)
+		if (strcmp(pVictim->GetPlayerName(), "[Boss] Stone") == 0)
 		{
-			CHandle<CCSPlayerController> victimHandle = pVictimController->GetHandle();
+			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
 			new CTimer(0.0f, false, false, [victimHandle]()
 			{
-				CCSPlayerController* pVictimController = (CCSPlayerController*)victimHandle.Get();
-				if (!pVictimController || !pVictimController->IsAlive())
+				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
+				if (!pVictim || !pVictim->IsAlive())
 					return -1.0f;
 
-				CCSPlayerPawn* pVictimPawn = pVictimController->GetPlayerPawn();
+				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
 				if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
 					return -1.0f;
 
@@ -277,17 +316,6 @@ bool vsBots_Hook_OnTakeDamage_Alive(CTakeDamageInfo* pInfo, CCSPlayerPawn* pVict
 			});
 		}
 	}
-
-	return false;
-}
-
-void vsBots_OnPlayerHurt(IGameEvent* pEvent)
-{
-	CCSPlayerController* pAttacker = (CCSPlayerController*)pEvent->GetPlayerController("attacker");
-	CCSPlayerController* pVictim = (CCSPlayerController*)pEvent->GetPlayerController("userid");
-
-	if (!pAttacker || !pVictim)
-		return;
 }
 
 void vsBots_OnPlayerDeath(IGameEvent* pEvent)
