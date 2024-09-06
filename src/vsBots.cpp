@@ -27,6 +27,7 @@ extern CGlobalVars* gpGlobals;
 const int DIFFICULTY_MIN = 0;
 const int DIFFICULTY_MAX = 12;
 
+bool g_bCrusherHasShotgun = true;
 int g_difficulty = 0;
 int g_humanTeam = CS_TEAM_CT;
 int g_botTeam = CS_TEAM_T;
@@ -279,7 +280,6 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			return -1.0f;
 		}
 
-
 		const bool bIsPistolRound = pController->m_pInGameMoneyServices->m_iAccount <= 1000;
 
 		if (!bIsPistolRound)
@@ -299,7 +299,13 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		if (strcmp(pBot->m_name, "[Boss] Crusher") == 0)
 		{
 			if (!bIsPistolRound)
+			{
 				pPawn->m_pItemServices->GiveNamedItem("weapon_xm1014");
+				g_bCrusherHasShotgun = true;
+			}
+			else
+				g_bCrusherHasShotgun = false;
+
 			pController->m_iScore = 100;
 
 			pPawn->m_clrRender = Color(255, 0, 0, 255);
@@ -512,7 +518,7 @@ bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWe
 	if (pController->IsBot())
 	{
 		const char* pszWeaponClassname = pPlayerWeapon->GetClassname();
-		if (V_strcmp(pController->GetPlayerName(), "[Boss] Crusher") == 0)
+		if (V_strcmp(pController->GetPlayerName(), "[Boss] Crusher") == 0 && g_bCrusherHasShotgun)
 		{
 			if (V_strncmp(pszWeaponClassname, "weapon_xm1014", 13) != 0 && V_strncmp(pszWeaponClassname, "weapon_knife", 12) != 0)
 				return false;
