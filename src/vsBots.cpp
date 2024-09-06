@@ -9,6 +9,7 @@
 #include "entity/cgamerules.h"
 #include <fstream>
 #include <regex>
+#include <entity/cenvexplosion.h>
 
 extern IVEngineServer2* g_pEngineServer2;
 extern CCSGameRules* g_pGameRules;
@@ -117,7 +118,7 @@ void DuplicateSpawnPoint()
 
 	CUtlVector<SpawnPoint*>* botTeamSpawns = g_botTeam == CS_TEAM_T ? g_pGameRules->m_TerroristSpawnPoints() : g_pGameRules->m_CTSpawnPoints();
 
-	int addCount = botsCount - botTeamSpawns->Count();
+	size_t addCount = botsCount - botTeamSpawns->Count();
 	Message("DuplicateSpawnPoint() : addCount : %d\n", addCount);
 	if (addCount <= 0)
 		return;
@@ -252,6 +253,8 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pController->SwitchTeam(g_botTeam);
 
 			// Todo : silent team change
+			Vector pos = Vector(0, 0, 0);
+			pPawn->Teleport(&pos, nullptr, nullptr);
 			pPawn->CommitSuicide(false, false);
 			return -1.0f;
 		}
@@ -426,12 +429,12 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 				CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
 				new CTimer(1.0f, false, false, []()
 				{
-					CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_3secs", "Exp203_Explode_2Secs"));
+					CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_2secs", "Exp203_Explode_2Secs"));
 					return -1.0f;
 				});
 				new CTimer(2.0f, false, false, []()
 				{
-					CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_3secs", "Exp203_Explode_1Secs"));
+					CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_1sec", "Exp203_Explode_1Sec"));
 					return -1.0f;
 				});
 				new CTimer(3.0f, false, false, [victimHandle]()
@@ -440,17 +443,20 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 					if (!pVictim)
 						return -1.0f;
 
-					CBaseEntity* pExplosion = CreateEntityByName("env_explosion");
+					CEnvExplosion* pExplosion = CreateEntityByName<CEnvExplosion>("env_explosion");
 
 					CEntityKeyValues* pKeyValues = new CEntityKeyValues();
 
 					pKeyValues->SetInt("iMagnitude", 9999);
 					pKeyValues->SetInt("iRadiusOverride", 9999);
-					pKeyValues->SetInt("teamnum", pVictim->m_iTeamNum);
 
-					pExplosion->SetAbsOrigin(pVictim->GetAbsOrigin());
-					pExplosion->SetAbsRotation(pVictim->GetAbsRotation());
-					pExplosion->DispatchSpawn();
+					auto origin = pVictim->GetAbsOrigin();
+					auto angles = pVictim->GetAbsRotation();
+
+					pExplosion->m_iTeamNum = pVictim->m_iTeamNum;
+					pExplosion->m_hOwnerEntity.Set(pVictim->GetPlayerPawn());
+					pExplosion->Teleport(&origin, &angles, nullptr);
+					pExplosion->DispatchSpawn(pKeyValues);
 					
 					pExplosion->AcceptInput("Explode");
 					// Todo - Kill CExplosion entity after explode

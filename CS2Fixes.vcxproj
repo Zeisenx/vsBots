@@ -189,6 +189,7 @@
     <ClCompile Include="src\adminsystem.cpp" />
     <ClCompile Include="src\commands.cpp" />
     <ClCompile Include="src\cs2fixes.cpp" />
+    <ClCompile Include="src\cs2_sdk\entity\cenvexplosion.h" />
     <ClCompile Include="src\cs2_sdk\schema.cpp" />
     <ClCompile Include="src\ctimer.cpp" />
     <ClCompile Include="src\customio.cpp" />

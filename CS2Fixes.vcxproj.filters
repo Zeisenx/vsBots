@@ -48,6 +48,7 @@
     <ClCompile Include="src\utils\entity.cpp" />
     <ClCompile Include="src\utils\plat_unix.cpp" />
     <ClCompile Include="src\utils\plat_win.cpp" />
+    <ClCompile Include="src\cs2_sdk\entity\cenvexplosion.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\adminsystem.h" />
