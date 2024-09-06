@@ -6,9 +6,13 @@
 #include "vsBots.h"
 #include "ctimer.h"
 #include "utils/entity.h"
+#include "entity/cgamerules.h"
 #include <fstream>
+#include <regex>
 
 extern IVEngineServer2* g_pEngineServer2;
+extern CCSGameRules* g_pGameRules;
+extern CGlobalVars* gpGlobals;
 
 #define BOSSMODEL_DEFAULT "characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl"
 
@@ -29,17 +33,28 @@ FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
 FAKE_INT_CVAR(vsbots_humanteam, "Human Team", g_humanTeam, false, false)
 FAKE_INT_CVAR(vsbots_botteam, "Bot Team", g_botTeam, false, false)
 std::vector<std::string> g_vecBotNamesList;
+KeyValues* g_pKVPrintText;
+
+void LoadPrintTextKV();
+void DuplicateSpawnPoint();
+void AddHumanBots();
 
 void vsBots_OnLevelInit(char const* pMapName)
 {
+	LoadPrintTextKV();
+
+	char cmdFmt[128];
 	if (strncmp(pMapName, "de_", 3) == 0)
 	{
 		g_humanTeam = CS_TEAM_T;
 		g_botTeam = CS_TEAM_CT;
 
 		g_pEngineServer2->ServerCommand("mp_humanteam t");
-		g_pEngineServer2->ServerCommand("mp_teamname_1 \"인간 학살 팀\"");
-		g_pEngineServer2->ServerCommand("mp_teamname_2 \"꿈도 희망도 없는 팀\"");
+
+		V_snprintf(cmdFmt, sizeof(cmdFmt), "mp_teamname_1 \"%s\"", g_pKVPrintText->GetString("TeamName_BotTeam", "Bot Team"));
+		g_pEngineServer2->ServerCommand(cmdFmt);
+		V_snprintf(cmdFmt, sizeof(cmdFmt), "mp_teamname_2 \"%s\"", g_pKVPrintText->GetString("TeamName_HumanTeam", "Human Team"));
+		g_pEngineServer2->ServerCommand(cmdFmt);
 	}
 	else
 	{
@@ -47,8 +62,11 @@ void vsBots_OnLevelInit(char const* pMapName)
 		g_botTeam = CS_TEAM_T;
 
 		g_pEngineServer2->ServerCommand("mp_humanteam ct");
-		g_pEngineServer2->ServerCommand("mp_teamname_2 \"인간 학살 팀\"");
-		g_pEngineServer2->ServerCommand("mp_teamname_1 \"꿈도 희망도 없는 팀\"");
+
+		V_snprintf(cmdFmt, sizeof(cmdFmt), "mp_teamname_2 \"%s\"", g_pKVPrintText->GetString("TeamName_BotTeam", "Bot Team"));
+		g_pEngineServer2->ServerCommand(cmdFmt);
+		V_snprintf(cmdFmt, sizeof(cmdFmt), "mp_teamname_1 \"%s\"", g_pKVPrintText->GetString("TeamName_HumanTeam", "Human Team"));
+		g_pEngineServer2->ServerCommand(cmdFmt);
 	}
 
 	g_pEngineServer2->ServerCommand("exec cs2fixes/vsbots");
@@ -56,10 +74,69 @@ void vsBots_OnLevelInit(char const* pMapName)
 	vsBots_LoadBotNames();
 }
 
+void LoadPrintTextKV()
+{
+	if (g_pKVPrintText)
+		delete g_pKVPrintText;
+
+	g_pKVPrintText = new KeyValues("PrintText");
+
+	const char* pszPath = "addons/cs2fixes/configs/vsbots/printtext.cfg";
+
+	if (!g_pKVPrintText->LoadFromFile(g_pFullFileSystem, pszPath))
+	{
+		Warning("Failed to load %s\n", pszPath);
+		return;
+	}
+}
+
+void CPrintAll(int hud_dest, const char* msg, ...)
+{
+	va_list args;
+	va_start(args, msg);
+
+	char buf[256];
+	V_vsnprintf(buf, sizeof(buf), msg, args);
+
+	va_end(args);
+
+	std::string bufStr = buf;
+
+	bufStr = std::regex_replace(bufStr, std::regex("\\{default\\}"), "\x01");
+	bufStr = std::regex_replace(bufStr, std::regex("\\{red\\}"), "\x02");
+	bufStr = std::regex_replace(bufStr, std::regex("\\{purple\\}"), "\x04");
+	bufStr = std::regex_replace(bufStr, std::regex("\\{green\\}"), "\x04");
+	bufStr = std::regex_replace(bufStr, std::regex("\\{gold\\}"), "\x09");
+	bufStr = std::regex_replace(bufStr, std::regex("\\{blue\\}"), "\x0C");
+	ClientPrintAll(hud_dest, bufStr.c_str());
+}
+
+void DuplicateSpawnPoint()
+{
+	size_t botsCount = g_vecBotNamesList.size();
+
+	CUtlVector<SpawnPoint*>* botTeamSpawns = g_botTeam == CS_TEAM_T ? g_pGameRules->m_TerroristSpawnPoints() : g_pGameRules->m_CTSpawnPoints();
+
+	int addCount = botsCount - botTeamSpawns->Count();
+	Message("DuplicateSpawnPoint() : addCount : %d\n", addCount);
+	if (addCount <= 0)
+		return;
+
+	for (int i = 1; i <= addCount; i++)
+	{
+		SpawnPoint* spawnEntity = CreateEntityByName<SpawnPoint>(g_botTeam == CS_TEAM_T ? "info_player_terrorist" : "info_player_counterterrorist");
+
+		CEntityKeyValues* pKeyValues = new CEntityKeyValues();
+
+		spawnEntity->SetAbsOrigin((*botTeamSpawns)[i % botTeamSpawns->Count()]->GetAbsOrigin());
+		spawnEntity->SetAbsRotation((*botTeamSpawns)[i % botTeamSpawns->Count()]->GetAbsRotation());
+		spawnEntity->DispatchSpawn();
+	}
+}
 
 void vsBots_LoadBotNames()
 {
-	Message("vsBots_LoadBotNames()");
+	Message("vsBots_LoadBotNames()\n");
 	g_vecBotNamesList.clear();
 	const char* pszFilePath = "addons/cs2fixes/configs/vsBots/botnames.txt";
 	char szPath[MAX_PATH];
@@ -83,19 +160,22 @@ void vsBots_OnRoundStart(IGameEvent* pEvent)
 	g_pEngineServer2->ServerCommand("bot_difficulty 3");
 	g_pEngineServer2->ServerCommand("mp_flinch_punch_scale 0.0");
 
+	DuplicateSpawnPoint();
 	for (auto& name : g_vecBotNamesList)
 	{
 		char szBotAddCmd[128];
-		V_snprintf(szBotAddCmd, sizeof(szBotAddCmd), "bot_add_%s \"%s\"", g_botTeam == CS_TEAM_T ? "t" : "ct", name.c_str());
+		V_snprintf(szBotAddCmd, sizeof(szBotAddCmd), "bot_add \"%s\"", name.c_str());
 		g_pEngineServer2->ServerCommand(szBotAddCmd);
 	}
+
+	AddHumanBots();
 }
 
 void vsBots_OnRoundFreezeEnd(IGameEvent* pEvent)
 {
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Zeisen Project Discord]\x01 https://discord.gg/tDZUnpaumD");
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Bot Level]\x01 %d", g_difficulty);
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Weapon Restrict]\x01 소이탄(Molotov/Incendiary), 연막탄(Smokegrenade), 네게브(Negev), 딱딱이(G3SG1, SCAR-20)은 \x02금지\x01되어 있습니다.");
+	CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_WeaponRestrict", "Weapon Restrict"));
 }
 
 void vsBots_OnRoundEnd(IGameEvent* pEvent)
@@ -110,7 +190,7 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 	else
 		g_difficulty = MAX(DIFFICULTY_MIN, g_difficulty - 1);
 
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_difficulty);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d -> %d", oldLevel, g_difficulty);
 }
 
 bool vsBots_IsBotHeadOnly(CCSBot* pBot)
@@ -166,6 +246,16 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		if (!pPawn)
 			return -1.0f;
 
+		CCSBot* pBot = pPawn->m_pBot;
+		if (pBot && pController->m_iTeamNum == g_humanTeam && strncmp(pBot->m_name, "[Human]", 7) != 0)
+		{
+			pController->SwitchTeam(g_botTeam);
+
+			// Todo : silent team change
+			pPawn->CommitSuicide(false, false);
+			return -1.0f;
+		}
+
 		if (pController->m_iTeamNum == g_humanTeam)
 		{
 			pPawn->m_iHealth = g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1));
@@ -187,19 +277,11 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		}
 
 
-		CCSBot* pBot = pPawn->m_pBot;
-		if (pController->m_iTeamNum == g_humanTeam && strncmp(pBot->m_name, "[Human]", 7) != 0)
-		{
-			pController->SwitchTeam(g_botTeam);
-			pPawn->CommitSuicide(false, false);
-			return -1.0f;
-		}
-
 		const bool bIsPistolRound = pController->m_pInGameMoneyServices->m_iAccount <= 1000;
 
 		if (!bIsPistolRound)
 			pController->m_pInGameMoneyServices->m_iAccount = 16000;
-
+		
 		pBot->m_hasVisitedEnemySpawn = true; // it makes bot doesn't rush to enemy spawn
 		if (strncmp(pBot->m_name, "[Boss]", 6) == 0)
 		{
@@ -326,12 +408,152 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 	if (!pAttacker || !pVictim)
 		return;
 
+	if (pVictim == pAttacker)
+		return;
+	
 	if (pVictim->IsBot())
 	{
-		if (strncmp(pVictim->GetPlayerName(), "[Boss]", 6) == 0)
+		if (V_strncmp(pVictim->GetPlayerName(), "[Boss]", 6) == 0)
 		{
-			ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Boss Kill]\x0C %s 유저\x01가 \x02%s 보스를 처치했습니다!",
+			CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_BossKill", "BossKill %s %s"), 
 				pAttacker->GetPlayerName(), pVictim->GetPlayerName());
+
+			if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Exp203", 14) == 0)
+			{
+				// Todo : solve this to single timer
+				CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_3secs", "Exp203_Explode_3Secs"));
+
+				CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
+				new CTimer(1.0f, false, false, []()
+				{
+					CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_3secs", "Exp203_Explode_2Secs"));
+					return -1.0f;
+				});
+				new CTimer(2.0f, false, false, []()
+				{
+					CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_3secs", "Exp203_Explode_1Secs"));
+					return -1.0f;
+				});
+				new CTimer(3.0f, false, false, [victimHandle]()
+				{
+					CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
+					if (!pVictim)
+						return -1.0f;
+
+					CBaseEntity* pExplosion = CreateEntityByName("env_explosion");
+
+					CEntityKeyValues* pKeyValues = new CEntityKeyValues();
+
+					pKeyValues->SetInt("iMagnitude", 9999);
+					pKeyValues->SetInt("iRadiusOverride", 9999);
+					pKeyValues->SetInt("teamnum", pVictim->m_iTeamNum);
+
+					pExplosion->SetAbsOrigin(pVictim->GetAbsOrigin());
+					pExplosion->SetAbsRotation(pVictim->GetAbsRotation());
+					pExplosion->DispatchSpawn();
+					
+					pExplosion->AcceptInput("Explode");
+					// Todo - Kill CExplosion entity after explode
+
+					return -1.0f;
+				});
+			}
 		}
+	}
+}
+
+void vsBots_OnWeaponFire(IGameEvent* pEvent)
+{
+	CCSPlayerController* pController = (CCSPlayerController*)pEvent->GetPlayerController("userid");
+	if (!pController)
+		return;
+
+	if (pController->IsBot() && V_strncmp(pController->GetPlayerName(), "[Boss] Crusher", 14) == 0)
+	{
+		auto pPawn = pController->GetPawn();
+		if (!pPawn)
+			return;
+
+		CCSPlayer_WeaponServices* pWeaponServices = pPawn->m_pWeaponServices;
+		if (!pWeaponServices)
+			return;
+
+		CUtlVector<CHandle<CBasePlayerWeapon>>* weapons = pWeaponServices->m_hMyWeapons();
+
+		FOR_EACH_VEC(*weapons, i)
+		{
+			CBasePlayerWeapon* weapon = (*weapons)[i].Get();
+
+			if (!weapon)
+				continue;
+
+			if (weapon->GetWeaponVData()->m_GearSlot() == GEAR_SLOT_RIFLE || weapon->GetWeaponVData()->m_GearSlot() == GEAR_SLOT_PISTOL)
+				weapon->AcceptInput("SetClipPrimary", "999");
+		}
+	}
+}
+
+bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon)
+{
+	CCSPlayerPawn* pPawn = pWeaponServices->__m_pChainEntity();
+	if (!pPawn)
+		return false;
+
+	CCSPlayerController* pController = CCSPlayerController::FromPawn(pPawn);
+	if (!pController)
+		return false;
+
+	if (pController->IsBot())
+	{
+		const char* pszWeaponClassname = pPlayerWeapon->GetClassname();
+		if (V_strcmp(pController->GetPlayerName(), "[Boss] Crusher") == 0)
+		{
+			if (V_strncmp(pszWeaponClassname, "weapon_xm1014", 13) != 0 && V_strncmp(pszWeaponClassname, "weapon_knife", 12) != 0)
+				return false;
+		}
+		if (V_strcmp(pController->GetPlayerName(), "[Boss] Stone") == 0)
+		{
+			if (V_strncmp(pszWeaponClassname, "weapon_knife", 12) != 0)
+				return false;
+		}
+
+		if (V_strncmp(pszWeaponClassname, "weapon_hegrenade", 16) == 0 ||
+			V_strncmp(pszWeaponClassname, "weapon_flashbang", 16) == 0 ||
+			V_strncmp(pszWeaponClassname, "weapon_decoy", 12) == 0)
+			return false;
+	}
+
+	return true;
+}
+
+void AddHumanBots()
+{
+	int playerCount = 0;
+	for (int i = 0; i < gpGlobals->maxClients; i++)
+	{
+		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
+		if (!pController || !pController->IsConnected() || pController->IsBot() || pController->m_iTeamNum() <= CS_TEAM_SPECTATOR)
+			continue;
+
+		playerCount++;
+	}
+
+	if (playerCount == 0)
+		return;
+
+	const int maxBotCount = 8;
+	int botCount = maxBotCount - playerCount;
+	for (int i = 1; i <= botCount; i++)
+	{
+		char szBotAddCmd[128];
+		V_snprintf(szBotAddCmd, sizeof(szBotAddCmd), "bot_add_%s \"[Human] PLAYER%d\"", g_humanTeam == 2 ? "t" : "ct", i);
+		g_pEngineServer2->ServerCommand(szBotAddCmd);
+	}
+
+	for (int i = botCount + 1; i <= maxBotCount; i++)
+	{
+		char szBotAddCmd[128];
+		V_snprintf(szBotAddCmd, sizeof(szBotAddCmd), "bot_kick \"[Human] PLAYER%d\"", i);
+		g_pEngineServer2->ServerCommand(szBotAddCmd);
 	}
 }

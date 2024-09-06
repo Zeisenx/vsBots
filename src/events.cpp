@@ -222,6 +222,11 @@ GAME_EVENT_F(player_death)
 	pPlayer->SetTotalKills(pPlayer->GetTotalKills() + 1);
 }
 
+GAME_EVENT_F(weapon_fire)
+{
+	vsBots_OnWeaponFire(pEvent);
+}
+
 bool g_bFullAllTalk = false;
 FAKE_BOOL_CVAR(cs2f_full_alltalk, "Whether to enforce sv_full_alltalk 1", g_bFullAllTalk, false, false);
 
