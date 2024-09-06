@@ -46,7 +46,7 @@ void vsBots_OnLevelInit(char const* pMapName)
 	LoadPrintTextKV();
 
 	char cmdFmt[128];
-	if (strncmp(pMapName, "de_", 3) == 0)
+	if (strncmp(pMapName, "de_", 3) == 0 && rand() % 10 == 0)
 	{
 		g_humanTeam = CS_TEAM_T;
 		g_botTeam = CS_TEAM_CT;
@@ -326,31 +326,42 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		{
 			pPawn->m_clrRender = Color(0, 255, 0, 255);
 			pPawn->m_iHealth = 203;
+
+			if (!bIsPistolRound)
+				pPawn->m_pItemServices->GiveNamedItem("weapon_m249");
 		}
 
 		return -1.0f;
 	});
 }
 
-bool vsBots_Hook_OnTakeDamage_Alive(CTakeDamageInfo* pInfo, CCSPlayerPawn* pVictimPawn)
+
+bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo* inputInfo)
 {
-	CCSPlayerPawn* pAttackerPawn = (CCSPlayerPawn*)pInfo->m_hAttacker.Get();
+	if (!pThis->IsPawn())
+		return true;
+
+	CCSPlayerPawn* pVictimPawn = (CCSPlayerPawn*)pThis;
+	CCSPlayerPawn* pAttackerPawn = (CCSPlayerPawn*)inputInfo->m_hAttacker.Get();
 
 	if (!(pAttackerPawn && pVictimPawn && pAttackerPawn->IsPawn() && pVictimPawn->IsPawn()))
 		return false;
 
-	CCSPlayerController* pAttackerController = CCSPlayerController::FromPawn(pAttackerPawn);
 	CCSPlayerController* pVictimController = CCSPlayerController::FromPawn(pVictimPawn);
+	CCSPlayerController* pAttackerController = CCSPlayerController::FromPawn(pAttackerPawn);
+	if (!pVictimController || !pAttackerController)
+		return false;
+
 	if (pAttackerController->IsBot())
 	{
 		if ((g_difficulty >= 1 && V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Crusher", 14) == 0) ||
 			V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Stone", 12) == 0)
 		{
-			pInfo->m_flDamage = 9999.0;
+			inputInfo->m_flDamage = 9999.0;
 		}
 	}
 
-	return false;
+	return true;
 }
 
 void vsBots_OnPlayerHurt(IGameEvent* pEvent)
@@ -426,6 +437,10 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 	if (pVictim == pAttacker)
 		return;
 	
+	CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
+	if (!pVictimPawn)
+		return;
+
 	if (pVictim->IsBot())
 	{
 		if (V_strncmp(pVictim->GetPlayerName(), "[Boss]", 6) == 0)
@@ -435,10 +450,12 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 
 			if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Exp203", 14) == 0)
 			{
+				auto origin = pVictimPawn->GetAbsOrigin();
+
 				// Todo : solve this to single timer
 				CPrintChatToAll(g_pKVPrintText->GetString("Message_Exp203_Explode_3secs", "Exp203_Explode_3Secs"));
 
-				CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
+				CHandle<CCSPlayerPawn> victimHandle = pVictimPawn->GetHandle();
 				new CTimer(1.0f, false, false, []()
 				{
 					CPrintChatToAll(g_pKVPrintText->GetString("Message_Exp203_Explode_2secs", "Exp203_Explode_2Secs"));
@@ -449,10 +466,10 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 					CPrintChatToAll(g_pKVPrintText->GetString("Message_Exp203_Explode_1sec", "Exp203_Explode_1Sec"));
 					return -1.0f;
 				});
-				new CTimer(3.0f, false, false, [victimHandle]()
+				new CTimer(3.0f, false, false, [victimHandle, origin]()
 				{
-					CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
-					if (!pVictim)
+					CCSPlayerPawn* pVictimPawn = (CCSPlayerPawn*)victimHandle.Get();
+					if (!pVictimPawn)
 						return -1.0f;
 
 					CEnvExplosion* pExplosion = CreateEntityByName<CEnvExplosion>("env_explosion");
@@ -462,16 +479,15 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 					pKeyValues->SetInt("iMagnitude", 9999);
 					pKeyValues->SetInt("iRadiusOverride", 9999);
 
-					auto origin = pVictim->GetAbsOrigin();
-					auto angles = pVictim->GetAbsRotation();
+					pExplosion->m_iTeamNum = pVictimPawn->m_iTeamNum;
+					pExplosion->m_hOwnerEntity.Set(pVictimPawn);
 
-					pExplosion->m_iTeamNum = pVictim->m_iTeamNum;
-					pExplosion->m_hOwnerEntity.Set(pVictim->GetPlayerPawn());
-					pExplosion->Teleport(&origin, &angles, nullptr);
+					Vector explosionOrigin = origin;
+					explosionOrigin.z += 30.0f;
+					pExplosion->Teleport(&explosionOrigin, nullptr, nullptr);
 					pExplosion->DispatchSpawn(pKeyValues);
 					
 					pExplosion->AcceptInput("Explode");
-					// Todo - Kill CExplosion entity after explode
 
 					return -1.0f;
 				});
@@ -542,6 +558,18 @@ bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWe
 	}
 
 	return true;
+}
+
+void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
+{
+	CCSPlayerPawn* pPawn = pThis->GetPawn();
+	CCSPlayerController* pController = pPawn->GetOriginalController();
+
+	if (pPawn->IsBot())
+	{
+		// Prevent bot walking
+		pThis->m_nButtons().m_pButtonStates[0] &= ~IN_SPEED;
+	}
 }
 
 void AddHumanBots()

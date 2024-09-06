@@ -107,6 +107,9 @@ void FASTCALL Detour_CBaseEntity_TakeDamageOld(CBaseEntity *pThis, CTakeDamageIn
 	if (g_bBlockAllDamage && pThis->IsPawn())
 		return;
 
+	if (!vsBots_Detour_CBaseEntity_TakeDamageOld(pThis, inputInfo))
+		return;
+
 	CBaseEntity *pInflictor = inputInfo->m_hInflictor.Get();
 	const char *pszInflictorClass = pInflictor ? pInflictor->GetClassname() : "";
 
@@ -457,6 +460,8 @@ void FASTCALL Detour_ProcessMovement(CCSPlayer_MovementServices *pThis, void *pM
 	if (!pController || !pController->IsConnected())
 		return ProcessMovement(pThis, pMove);
 
+	vsBots_Detour_ProcessMovement(pThis);
+
 	float flSpeedMod = pController->GetZEPlayer()->GetSpeedMod();
 
 	if (flSpeedMod == 1.f)
@@ -498,7 +503,7 @@ void* FASTCALL Detour_ProcessUsercmds(CCSPlayerController *pController, CUserCmd
 
 	for (int i = 0; i < numcmds; i++)
 		cmds[i].cmd.mutable_base()->mutable_subtick_moves()->Clear();
-
+	
 	VPROF_SCOPE_END();
 
 	return ProcessUsercmds(pController, cmds, numcmds, paused, margin);

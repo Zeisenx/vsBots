@@ -138,7 +138,13 @@ void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 	if (!foundWeapon)
 		return;
 
-	if (pPawn->m_iHealth() <= 0 || pPawn->m_iTeamNum != CS_TEAM_CT)
+	if (pPawn->m_iHealth() <= 0)
+	{
+		ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX"You can only buy weapons when alive.");
+		return;
+	}
+
+	if (g_bEnableZR && pPawn->m_iTeamNum != CS_TEAM_CT)
 	{
 		ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX"You can only buy weapons when human.");
 		return;

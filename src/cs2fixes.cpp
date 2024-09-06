@@ -901,9 +901,6 @@ bool CS2Fixes::Hook_OnTakeDamage_Alive(CTakeDamageInfoContainer *pInfoContainer)
 {
 	CCSPlayerPawn *pPawn = META_IFACEPTR(CCSPlayerPawn);
 
-	if (vsBots_Hook_OnTakeDamage_Alive(pInfoContainer->pInfo, pPawn))
-		RETURN_META_VALUE(MRES_SUPERCEDE, false);
-
 	if (g_bEnableZR && ZR_Hook_OnTakeDamage_Alive(pInfoContainer->pInfo, pPawn))
 		RETURN_META_VALUE(MRES_SUPERCEDE, false);
 
