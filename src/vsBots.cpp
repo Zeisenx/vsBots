@@ -27,7 +27,7 @@ extern CGlobalVars* gpGlobals;
 const int DIFFICULTY_MIN = 0;
 const int DIFFICULTY_MAX = 12;
 
-bool g_bCrusherHasShotgun = true;
+bool g_bCrusherHasShotgun = false;
 int g_difficulty = 0;
 int g_humanTeam = CS_TEAM_CT;
 int g_botTeam = CS_TEAM_T;
@@ -92,7 +92,7 @@ void LoadPrintTextKV()
 	}
 }
 
-void CPrintAll(int hud_dest, const char* msg, ...)
+void CPrintChatToAll(const char* msg, ...)
 {
 	va_list args;
 	va_start(args, msg);
@@ -110,7 +110,7 @@ void CPrintAll(int hud_dest, const char* msg, ...)
 	bufStr = std::regex_replace(bufStr, std::regex("\\{green\\}"), "\x04");
 	bufStr = std::regex_replace(bufStr, std::regex("\\{gold\\}"), "\x09");
 	bufStr = std::regex_replace(bufStr, std::regex("\\{blue\\}"), "\x0C");
-	ClientPrintAll(hud_dest, bufStr.c_str());
+	ClientPrintAll(HUD_PRINTTALK, bufStr.c_str());
 }
 
 void DuplicateSpawnPoint()
@@ -177,7 +177,7 @@ void vsBots_OnRoundFreezeEnd(IGameEvent* pEvent)
 {
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Zeisen Project Discord]\x01 https://discord.gg/tDZUnpaumD");
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Bot Level]\x01 %d", g_difficulty);
-	CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_WeaponRestrict", "Weapon Restrict"));
+	CPrintChatToAll(g_pKVPrintText->GetString("Message_WeaponRestrict", "Weapon Restrict"));
 }
 
 void vsBots_OnRoundEnd(IGameEvent* pEvent)
@@ -262,7 +262,9 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 
 		if (pController->m_iTeamNum == g_humanTeam)
 		{
-			pPawn->m_iHealth = g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1));
+			int health = g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1));
+			pPawn->m_iHealth = health;
+			pPawn->m_iMaxHealth = health;
 			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
 		}
 
@@ -341,8 +343,8 @@ bool vsBots_Hook_OnTakeDamage_Alive(CTakeDamageInfo* pInfo, CCSPlayerPawn* pVict
 	CCSPlayerController* pVictimController = CCSPlayerController::FromPawn(pVictimPawn);
 	if (pAttackerController->IsBot())
 	{
-		if ((g_difficulty >= 1 && strcmp(pAttackerController->GetPlayerName(), "[Boss] Crusher") == 0) ||
-			strcmp(pAttackerController->GetPlayerName(), "[Boss] Stone") == 0)
+		if ((g_difficulty >= 1 && V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Crusher", 14) == 0) ||
+			V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Stone", 12) == 0)
 		{
 			pInfo->m_flDamage = 9999.0;
 		}
@@ -361,7 +363,7 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 
 	if (pVictim->IsBot())
 	{
-		if (strcmp(pVictim->GetPlayerName(), "[Boss] Crusher") == 0)
+		if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Crusher", 14) == 0)
 		{
 			float regenTime = 0.2f;
 			if (g_difficulty >= 4) regenTime = 0.15f;
@@ -375,15 +377,17 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 					return -1.0f;
 
 				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
-				if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
+				if (!(pVictimPawn && pVictimPawn->IsPawn()))
 					return -1.0f;
 
 				pVictimPawn->m_iHealth = pVictimPawn->m_iMaxHealth;
+
+				return -1.0f;
 			});
 		}
 
 
-		if (strcmp(pVictim->GetPlayerName(), "[Boss] Stone") == 0)
+		if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Stone", 12) == 0)
 		{
 			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
 			new CTimer(0.0f, false, false, [victimHandle]()
@@ -393,7 +397,7 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 					return -1.0f;
 
 				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
-				if (!(pVictimPawn && pVictimPawn && pVictimPawn->IsPawn()))
+				if (!(pVictimPawn && pVictimPawn->IsPawn()))
 					return -1.0f;
 
 				CPlayer_MovementServices* pMovementService = pVictimPawn->m_pMovementServices;
@@ -404,6 +408,8 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 
 				pVictimPawn->m_flVelocityModifier = 1.0;
 				pStaminaService->m_flStamina = 0.0;
+
+				return -1.0f;
 			});
 		}
 	}
@@ -424,23 +430,23 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 	{
 		if (V_strncmp(pVictim->GetPlayerName(), "[Boss]", 6) == 0)
 		{
-			CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_BossKill", "BossKill %s %s"), 
+			CPrintChatToAll(g_pKVPrintText->GetString("Message_BossKill", "BossKill %s %s"), 
 				pAttacker->GetPlayerName(), pVictim->GetPlayerName());
 
 			if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Exp203", 14) == 0)
 			{
 				// Todo : solve this to single timer
-				CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_3secs", "Exp203_Explode_3Secs"));
+				CPrintChatToAll(g_pKVPrintText->GetString("Message_Exp203_Explode_3secs", "Exp203_Explode_3Secs"));
 
 				CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
 				new CTimer(1.0f, false, false, []()
 				{
-					CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_2secs", "Exp203_Explode_2Secs"));
+					CPrintChatToAll(g_pKVPrintText->GetString("Message_Exp203_Explode_2secs", "Exp203_Explode_2Secs"));
 					return -1.0f;
 				});
 				new CTimer(2.0f, false, false, []()
 				{
-					CPrintAll(HUD_PRINTTALK, g_pKVPrintText->GetString("Message_Exp203_Explode_1sec", "Exp203_Explode_1Sec"));
+					CPrintChatToAll(g_pKVPrintText->GetString("Message_Exp203_Explode_1sec", "Exp203_Explode_1Sec"));
 					return -1.0f;
 				});
 				new CTimer(3.0f, false, false, [victimHandle]()
