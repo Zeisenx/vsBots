@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "schema.h"
 #include "ccsplayerpawn.h"
@@ -19,4 +19,6 @@ public:
 
     SCHEMA_FIELD_POINTER(char, m_name)
     SCHEMA_FIELD(bool, m_hasVisitedEnemySpawn)
+    SCHEMA_FIELD(CHandle<CCSPlayerPawn>, m_enemy)
+    SCHEMA_FIELD(bool, m_isEnemyVisible)
 };

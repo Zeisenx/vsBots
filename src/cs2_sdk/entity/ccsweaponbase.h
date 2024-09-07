@@ -89,6 +89,7 @@ class CBasePlayerWeapon : public CEconEntity
 public:
 	DECLARE_SCHEMA_CLASS(CBasePlayerWeapon)
 
+	SCHEMA_FIELD(int32_t, m_nNextPrimaryAttackTick)
 	CCSWeaponBaseVData* GetWeaponVData() { return (CCSWeaponBaseVData*)GetVData(); }
 };
 
@@ -96,4 +97,5 @@ class CCSWeaponBase : public CBasePlayerWeapon
 {
 public:
 	DECLARE_SCHEMA_CLASS(CCSWeaponBase)
+	SCHEMA_FIELD(float, m_fAccuracyPenalty)
 };

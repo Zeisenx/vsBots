@@ -31,6 +31,8 @@ bool g_bCrusherHasShotgun = false;
 int g_difficulty = 0;
 int g_humanTeam = CS_TEAM_CT;
 int g_botTeam = CS_TEAM_T;
+bool g_bForceSwitch;
+FAKE_INT_CVAR(vsbots_forceswitch, "Force team switch", g_bForceSwitch, false, false)
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
 FAKE_INT_CVAR(vsbots_humanteam, "Human Team", g_humanTeam, false, false)
 FAKE_INT_CVAR(vsbots_botteam, "Bot Team", g_botTeam, false, false)
@@ -47,7 +49,12 @@ void vsBots_OnLevelInit(char const* pMapName)
 
 	char cmdFmt[128];
 
-	if (strncmp(pMapName, "de_", 3) == 0 && rand() % 8 != 0)
+	bool isHumanTSide = strncmp(pMapName, "de_", 3) == 0;
+	if (rand() % 5 != 0 || g_bForceSwitch)
+		isHumanTSide = !isHumanTSide;
+
+	g_bForceSwitch = false;
+	if (isHumanTSide)
 	{
 		g_humanTeam = CS_TEAM_T;
 		g_botTeam = CS_TEAM_CT;
@@ -263,7 +270,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 
 		if (pController->m_iTeamNum == g_humanTeam)
 		{
-			int health = MAX(200, g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1)));
+			int health = MAX(100, g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1)));
 			pPawn->m_iHealth = health;
 			pPawn->m_iMaxHealth = health;
 			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
@@ -293,7 +300,8 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		{
 			pPawn->SetModel(BOSSMODEL_DEFAULT);
 			pPawn->m_ArmorValue = 9999;
-			pPawn->m_pItemServices->m_bHasHelmet = true;
+			if (!bIsPistolRound)
+				pPawn->m_pItemServices->m_bHasHelmet = true;
 
 			pController->m_iScore = 50;
 			pController->m_pInGameMoneyServices->m_iAccount = 0;
@@ -318,7 +326,9 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		{
 			pPawn->m_clrRender = Color(0, 0, 0, 255);
 			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_difficulty) - 1));
-			pPawn->m_iHealth = 599 + g_difficulty * 650;
+
+			int health = 600 + g_difficulty * 650;
+			pPawn->m_iHealth = health;
 
 			pController->GetZEPlayer()->SetSpeedMod(1.0 + g_difficulty * 0.03);
 		}
@@ -573,6 +583,38 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 		pThis->m_nButtons().m_pButtonStates[0] &= ~IN_SPEED;
 		if (V_strncmp(pController->GetPlayerName(), "[Boss] Stone", 12) == 0)
 			pThis->m_flStamina = 0.0;
+
+		if (V_strncmp(pController->GetPlayerName(), "[Boss] Crusher", 14) == 0)
+		{
+			CCSBot* pBot = pPawn->m_pBot;
+			if (!pBot)
+				return;
+
+			CCSPlayer_WeaponServices* pWeaponServices = pPawn->m_pWeaponServices;
+			if (!pWeaponServices)
+				return;
+
+			CBasePlayerWeapon* pBaseWeapon = pWeaponServices->m_hActiveWeapon.Get();
+			CCSWeaponBase* pWeapon = (CCSWeaponBase*)pBaseWeapon;
+			if (!pWeapon)
+				return;
+
+			if (pBot->m_isEnemyVisible)
+			{
+				if (gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)
+					pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
+			}
+
+			if (g_difficulty >= 9)
+			{
+				pWeaponServices->m_flNextAttack().m_Value = 0.0;
+				pWeapon->m_nNextPrimaryAttackTick = 1;
+				pWeapon->m_fAccuracyPenalty = 0.0;
+				pPawn->m_iShotsFired = 0;
+				pPawn->m_aimPunchAngle = QAngle(0, 0, 0);
+				pPawn->m_aimPunchAngleVel = QAngle(0, 0, 0);
+			}
+		}
 	}
 }
 

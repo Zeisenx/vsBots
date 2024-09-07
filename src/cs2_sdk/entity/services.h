@@ -79,6 +79,14 @@ public:
 	SCHEMA_FIELD(float, m_flMaxspeed)
 };
 
+class CPlayer_CameraServices : public CPlayerPawnComponent
+{
+public:
+	DECLARE_SCHEMA_CLASS(CPlayer_CameraServices);
+
+	SCHEMA_FIELD(QAngle, m_vecCsViewPunchAngle)
+};
+
 class CPlayer_MovementServices_Humanoid : public CPlayer_MovementServices
 {
 public:

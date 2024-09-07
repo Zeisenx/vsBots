@@ -65,6 +65,9 @@ public:
 
 	SCHEMA_FIELD(float, m_flVelocityModifier)
 	SCHEMA_FIELD(int32, m_ArmorValue);
+	SCHEMA_FIELD(int32_t, m_iShotsFired);
 	SCHEMA_FIELD(CCSPlayer_ActionTrackingServices*, m_pActionTrackingServices)
 	SCHEMA_FIELD(CCSBot*, m_pBot)
+	SCHEMA_FIELD(QAngle, m_aimPunchAngle)
+	SCHEMA_FIELD(QAngle, m_aimPunchAngleVel)
 };
