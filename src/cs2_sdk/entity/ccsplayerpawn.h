@@ -43,6 +43,8 @@ public:
 	DECLARE_SCHEMA_CLASS(CCSPlayerPawnBase);
 	SCHEMA_FIELD(QAngle, m_angEyeAngles)
 	SCHEMA_FIELD(CSPlayerState, m_iPlayerState)
+	SCHEMA_FIELD(float, m_flFlashDuration)
+	SCHEMA_FIELD(float, m_flFlashMaxAlpha)
 	SCHEMA_FIELD(CHandle<CCSPlayerController>, m_hOriginalController)
 
 	CCSPlayerController *GetOriginalController()

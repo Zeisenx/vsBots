@@ -28,6 +28,7 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent);
 void vsBots_OnPlayerSpawn(CCSPlayerController *pController);
 void vsBots_OnPlayerHurt(IGameEvent* pEvent);
 void vsBots_OnPlayerDeath(IGameEvent* pEvent);
+void vsBots_OnPlayerBlind(IGameEvent* pEvent);
 void vsBots_OnWeaponFire(IGameEvent* pEvent);
 bool vsBots_IsBotHeadOnly(CCSBot* pBot);
 bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo* inputInfo);

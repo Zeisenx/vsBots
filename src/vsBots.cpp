@@ -46,7 +46,8 @@ void vsBots_OnLevelInit(char const* pMapName)
 	LoadPrintTextKV();
 
 	char cmdFmt[128];
-	if (strncmp(pMapName, "de_", 3) == 0 && rand() % 10 == 0)
+
+	if (strncmp(pMapName, "de_", 3) == 0 && rand() % 8 != 0)
 	{
 		g_humanTeam = CS_TEAM_T;
 		g_botTeam = CS_TEAM_CT;
@@ -249,7 +250,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			return -1.0f;
 
 		CCSBot* pBot = pPawn->m_pBot;
-		if (pBot && pController->m_iTeamNum == g_humanTeam && strncmp(pBot->m_name, "[Human]", 7) != 0)
+		if (pBot && pController->m_iTeamNum == g_humanTeam && V_strncmp(pBot->m_name, "[Human]", 7) != 0)
 		{
 			pController->SwitchTeam(g_botTeam);
 
@@ -262,7 +263,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 
 		if (pController->m_iTeamNum == g_humanTeam)
 		{
-			int health = g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1));
+			int health = MAX(200, g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1)));
 			pPawn->m_iHealth = health;
 			pPawn->m_iMaxHealth = health;
 			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
@@ -288,7 +289,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pController->m_pInGameMoneyServices->m_iAccount = 16000;
 		
 		pBot->m_hasVisitedEnemySpawn = true; // it makes bot doesn't rush to enemy spawn
-		if (strncmp(pBot->m_name, "[Boss]", 6) == 0)
+		if (V_strncmp(pBot->m_name, "[Boss]", 6) == 0)
 		{
 			pPawn->SetModel(BOSSMODEL_DEFAULT);
 			pPawn->m_ArmorValue = 9999;
@@ -298,7 +299,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pController->m_pInGameMoneyServices->m_iAccount = 0;
 		}
 
-		if (strcmp(pBot->m_name, "[Boss] Crusher") == 0)
+		if (V_strncmp(pBot->m_name, "[Boss] Crusher", 14) == 0)
 		{
 			if (!bIsPistolRound)
 			{
@@ -313,16 +314,16 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pPawn->m_clrRender = Color(255, 0, 0, 255);
 		}
 
-		if (strcmp(pBot->m_name, "[Boss] Stone") == 0)
+		if (V_strncmp(pBot->m_name, "[Boss] Stone", 12) == 0)
 		{
 			pPawn->m_clrRender = Color(0, 0, 0, 255);
 			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_difficulty) - 1));
-			pPawn->m_iHealth = 599 + g_difficulty * 400;
+			pPawn->m_iHealth = 599 + g_difficulty * 650;
 
 			pController->GetZEPlayer()->SetSpeedMod(1.0 + g_difficulty * 0.03);
 		}
 
-		if (strcmp(pBot->m_name, "[Boss] Exp203") == 0)
+		if (V_strncmp(pBot->m_name, "[Boss] Exp203", 13) == 0)
 		{
 			pPawn->m_clrRender = Color(0, 255, 0, 255);
 			pPawn->m_iHealth = 203;
@@ -345,19 +346,32 @@ bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo
 	CCSPlayerPawn* pAttackerPawn = (CCSPlayerPawn*)inputInfo->m_hAttacker.Get();
 
 	if (!(pAttackerPawn && pVictimPawn && pAttackerPawn->IsPawn() && pVictimPawn->IsPawn()))
-		return false;
+		return true;
 
 	CCSPlayerController* pVictimController = CCSPlayerController::FromPawn(pVictimPawn);
 	CCSPlayerController* pAttackerController = CCSPlayerController::FromPawn(pAttackerPawn);
 	if (!pVictimController || !pAttackerController)
-		return false;
+		return true;
+
+	if (pVictimPawn != pAttackerPawn)
+	{
+		CBaseEntity* pInflictor = inputInfo->m_hInflictor.Get();
+		const char* pszInflictorClass = pInflictor ? pInflictor->GetClassname() : "";
+		if (V_strncmp(pszInflictorClass, "player", 6) == 0)
+		{
+			CBasePlayerWeapon* pWeapon = pAttackerPawn->m_pWeaponServices->m_hActiveWeapon.Get();
+			if (pWeapon && V_strncmp(pWeapon->GetClassname(), "weapon_knife", 12) == 0)
+				inputInfo->m_flDamage = 120.0f;
+		}
+	}
+
 
 	if (pAttackerController->IsBot())
 	{
 		if ((g_difficulty >= 1 && V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Crusher", 14) == 0) ||
 			V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Stone", 12) == 0)
 		{
-			inputInfo->m_flDamage = 9999.0;
+			inputInfo->m_flDamage = 9999.0f;
 		}
 	}
 
@@ -392,33 +406,6 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 					return -1.0f;
 
 				pVictimPawn->m_iHealth = pVictimPawn->m_iMaxHealth;
-
-				return -1.0f;
-			});
-		}
-
-
-		if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Stone", 12) == 0)
-		{
-			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
-			new CTimer(0.0f, false, false, [victimHandle]()
-			{
-				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
-				if (!pVictim || !pVictim->IsAlive())
-					return -1.0f;
-
-				CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
-				if (!(pVictimPawn && pVictimPawn->IsPawn()))
-					return -1.0f;
-
-				CPlayer_MovementServices* pMovementService = pVictimPawn->m_pMovementServices;
-				CCSPlayer_MovementServices* pStaminaService = (CCSPlayer_MovementServices*)pMovementService;
-
-				if (!pMovementService || !pStaminaService)
-					return -1.0f;
-
-				pVictimPawn->m_flVelocityModifier = 1.0;
-				pStaminaService->m_flStamina = 0.0;
 
 				return -1.0f;
 			});
@@ -496,6 +483,21 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 	}
 }
 
+void vsBots_OnPlayerBlind(IGameEvent* pEvent)
+{
+	CCSPlayerController* pVictim = (CCSPlayerController*)pEvent->GetPlayerController("userid");
+	CCSPlayerController* pAttacker = (CCSPlayerController*)pEvent->GetPlayerController("attacker");
+	if (!pVictim || !pAttacker || pVictim == pAttacker)
+		return;
+
+	CCSPlayerPawn* pVictimPawn = (CCSPlayerPawn*)pVictim->GetPlayerPawn();
+	if (!pVictimPawn)
+		return;
+
+	pVictimPawn->m_flFlashDuration = 0.0;
+	pVictimPawn->m_flFlashMaxAlpha = 0.0;
+}
+
 void vsBots_OnWeaponFire(IGameEvent* pEvent)
 {
 	CCSPlayerController* pController = (CCSPlayerController*)pEvent->GetPlayerController("userid");
@@ -569,6 +571,8 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 	{
 		// Prevent bot walking
 		pThis->m_nButtons().m_pButtonStates[0] &= ~IN_SPEED;
+		if (V_strncmp(pController->GetPlayerName(), "[Boss] Stone", 12) == 0)
+			pThis->m_flStamina = 0.0;
 	}
 }
 

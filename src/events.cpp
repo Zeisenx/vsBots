@@ -222,6 +222,11 @@ GAME_EVENT_F(player_death)
 	pPlayer->SetTotalKills(pPlayer->GetTotalKills() + 1);
 }
 
+GAME_EVENT_F(player_blind)
+{
+	vsBots_OnPlayerBlind(pEvent);
+}
+
 GAME_EVENT_F(weapon_fire)
 {
 	vsBots_OnWeaponFire(pEvent);
