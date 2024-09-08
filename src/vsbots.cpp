@@ -39,9 +39,11 @@ bool g_bCrusherHasShotgun = false;
 int g_difficulty = 0;
 int g_humanTeam = CS_TEAM_CT;
 int g_botTeam = CS_TEAM_T;
+bool g_bPlayerGlowEnabled = true;
 bool g_bForceSwitch;
 FAKE_INT_CVAR(vsbots_forceswitch, "Force team switch", g_bForceSwitch, false, false)
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
+FAKE_BOOL_CVAR(vsbots_player_glow, "Player Glow", g_bPlayerGlowEnabled, false, false)
 std::vector<std::string> g_vecBotNamesList;
 KeyValues* g_pKVPrintText;
 
@@ -282,8 +284,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
 
 			ZEPlayer* pPlayerTarget = pController->GetZEPlayer();
-
-			if (!pPlayerTarget->GetGlowModel())
+			if (g_bPlayerGlowEnabled && !pPlayerTarget->GetGlowModel())
 				pPlayerTarget->StartGlow(Color(0, 255, 0, 255), -1);
 		}
 
