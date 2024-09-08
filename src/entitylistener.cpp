@@ -24,6 +24,7 @@
 #include "cs2_sdk/entity/cbaseentity.h"
 #include "plat.h"
 #include "entity/cgamerules.h"
+#include "vsbots.h"
 
 extern CGameConfig *g_GameConfig;
 extern CCSGameRules* g_pGameRules;
@@ -44,6 +45,8 @@ void CEntityListener::OnEntitySpawned(CEntityInstance* pEntity)
 	const char* pszClassName = pEntity->m_pEntity->m_designerName.String();
 	Message("Entity spawned: %s %s\n", pszClassName, ((CBaseEntity*)pEntity)->m_sUniqueHammerID().Get());
 #endif
+
+	vsBots_OnEntitySpawned(pEntity);
 }
 
 void CEntityListener::OnEntityCreated(CEntityInstance* pEntity)

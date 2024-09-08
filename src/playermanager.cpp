@@ -409,7 +409,7 @@ void ZEPlayer::StartGlow(Color color, int duration)
 	pKeyValuesGlow->SetInt("glowteam", -1);
 	pKeyValuesGlow->SetInt("glowstate", 3);
 	pKeyValuesGlow->SetInt("renderamt", 1);
-
+	
 	pModelGlow->DispatchSpawn(pKeyValuesGlow);
 	pModelRelay->DispatchSpawn(pKeyValuesRelay);
 	pModelRelay->AcceptInput("FollowEntity", "!activator", pPawn);

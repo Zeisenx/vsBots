@@ -17,12 +17,20 @@ extern CGlobalVars* gpGlobals;
 
 #define BOSSMODEL_DEFAULT "characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl"
 
-#define ITEMDEFINDEX_G3SG1 11
-#define ITEMDEFINDEX_NEGEV 28
-#define ITEMDEFINDEX_SCAR20 38
-#define ITEMDEFINDEX_SMOKEGRENADE 45
-#define ITEMDEFINDEX_MOLOTOV 46
-#define ITEMDEFINDEX_INCGRENADE 48
+enum ItemDefIndexIDs : int
+{
+	ITEMDEFINDEX_G3SG1 = 11,
+	ITEMDEFINDEX_NEGEV = 28,
+	ITEMDEFINDEX_P250 = 36,
+	ITEMDEFINDEX_SCAR20 = 38,
+	ITEMDEFINDEX_SMOKEGRENADE = 45,
+	ITEMDEFINDEX_MOLOTOV = 46,
+	ITEMDEFINDEX_INCGRENADE = 48,
+	ITEMDEFINDEX_CZ75A = 63,
+	ITEMDEFINDEX_M4A1_SILENCER = 60,
+	ITEMDEFINDEX_USP_SILENCER = 61,
+	ITEMDEFINDEX_REVOLVER = 64,
+};
 
 const int DIFFICULTY_MIN = 0;
 const int DIFFICULTY_MAX = 12;
@@ -34,8 +42,6 @@ int g_botTeam = CS_TEAM_T;
 bool g_bForceSwitch;
 FAKE_INT_CVAR(vsbots_forceswitch, "Force team switch", g_bForceSwitch, false, false)
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
-FAKE_INT_CVAR(vsbots_humanteam, "Human Team", g_humanTeam, false, false)
-FAKE_INT_CVAR(vsbots_botteam, "Bot Team", g_botTeam, false, false)
 std::vector<std::string> g_vecBotNamesList;
 KeyValues* g_pKVPrintText;
 
@@ -50,7 +56,7 @@ void vsBots_OnLevelInit(char const* pMapName)
 	char cmdFmt[128];
 
 	bool isHumanTSide = strncmp(pMapName, "de_", 3) == 0;
-	if (rand() % 5 != 0 || g_bForceSwitch)
+	if (rand() % 5 == 0 || g_bForceSwitch)
 		isHumanTSide = !isHumanTSide;
 
 	g_bForceSwitch = false;
@@ -208,7 +214,7 @@ bool vsBots_IsBotHeadOnly(CCSBot* pBot)
 	if (g_difficulty >= 7)
 		return true;
 	
-	if (strncmp(pBot->m_name, "[Human]", 7) == 0)
+	if (V_strncmp(pBot->m_name, "[Human]", 7) == 0)
 		return true;
 
 	return false;
@@ -274,6 +280,11 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pPawn->m_iHealth = health;
 			pPawn->m_iMaxHealth = health;
 			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
+
+			ZEPlayer* pPlayerTarget = pController->GetZEPlayer();
+
+			if (!pPlayerTarget->GetGlowModel())
+				pPlayerTarget->StartGlow(Color(0, 255, 0, 255), -1);
 		}
 
 		if (!pController->IsBot())
@@ -290,6 +301,9 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			return -1.0f;
 		}
 
+		if (!pBot)
+			return -1.0f;
+		
 		const bool bIsPistolRound = pController->m_pInGameMoneyServices->m_iAccount <= 1000;
 
 		if (!bIsPistolRound)
@@ -395,6 +409,22 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 
 	if (!pAttacker || !pVictim)
 		return;
+
+	if (pVictim->m_iTeamNum == g_humanTeam)
+	{
+		ZEPlayer* pVictimPlayer = pVictim->GetZEPlayer();
+		CBaseModelEntity* pGlowModelEnt = pVictimPlayer->GetGlowModel();
+		CCSPlayerPawn* pVictimPawn = pVictim->GetPlayerPawn();
+		if (pGlowModelEnt && pVictimPawn)
+		{
+			float ratio = pVictimPawn->m_iHealth / (float)pVictimPawn->m_iMaxHealth;
+
+			int green = (int)(255 * ratio);
+			int red = 255 - green;
+
+			pGlowModelEnt->m_Glow().m_glowColorOverride = Color(red, green, 0, 255);
+		}
+	}
 
 	if (pVictim->IsBot())
 	{
@@ -615,6 +645,40 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 				pPawn->m_aimPunchAngleVel = QAngle(0, 0, 0);
 			}
 		}
+	}
+}
+
+void vsBots_OnEntitySpawned(CEntityInstance* pEntity)
+{
+	if (V_strncmp(pEntity->GetClassname(), "weapon_", 7) != 0)
+		return;
+
+	CBasePlayerWeapon* pWeapon = (CBasePlayerWeapon*)pEntity;
+	if (!pWeapon)
+		return;
+
+	CCSWeaponBaseVData* pVData = pWeapon->GetWeaponVData();
+	if (!pVData)
+		return;
+
+	// Todo : move to config
+	WeaponVDataMap_t WeaponMap[] = {
+		{ITEMDEFINDEX_CZ75A, -1, 60},
+		{ITEMDEFINDEX_REVOLVER, -1, 32},
+		{ITEMDEFINDEX_USP_SILENCER, -1, 48},
+		{ITEMDEFINDEX_M4A1_SILENCER, 30, 90},
+	};
+
+	int weaponID = pWeapon->m_AttributeManager().m_Item().m_iItemDefinitionIndex;
+	for (int i = 0; i < sizeof(WeaponMap) / sizeof(*WeaponMap); i++)
+	{
+		if (weaponID != WeaponMap[i].itemDefIndex)
+			continue;
+
+		if (WeaponMap[i].maxClip1 != -1)
+			pVData->m_iMaxClip1 = WeaponMap[i].maxClip1;
+		if (WeaponMap[i].maxAmmo != -1)
+			pVData->m_nPrimaryReserveAmmoMax = WeaponMap[i].maxAmmo;
 	}
 }
 

@@ -20,6 +20,13 @@
 
 #pragma once
 
+struct WeaponVDataMap_t
+{
+	int itemDefIndex;
+	int maxClip1;
+	int maxAmmo;
+};
+
 void vsBots_OnLevelInit(char const* pMapName);
 void vsBots_Precache(IEntityResourceManifest* pResourceManifest);
 void vsBots_OnRoundStart(IGameEvent* pEvent);
@@ -34,4 +41,5 @@ bool vsBots_IsBotHeadOnly(CCSBot* pBot);
 bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo* inputInfo);
 bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon);
 void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis);
+void vsBots_OnEntitySpawned(CEntityInstance* pEntity);
 void vsBots_LoadBotNames();
