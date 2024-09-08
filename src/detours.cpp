@@ -48,7 +48,7 @@
 #include "networksystem/inetworkserializer.h"
 #include "map_votes.h"
 #include "tier0/vprof.h"
-#include "vsBots.h"
+#include "vsbots.h"
 
 #include "tier0/memdbgon.h"
 

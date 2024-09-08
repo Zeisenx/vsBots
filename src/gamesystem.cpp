@@ -28,7 +28,7 @@
 #include "entities.h"
 #include "tier0/vprof.h"
 #include "idlemanager.h"
-#include "vsBots.h"
+#include "vsbots.h"
 
 #include "tier0/memdbgon.h"
 

@@ -25,7 +25,7 @@
 #include "networkstringtabledefs.h"
 #include "entity/cbaseplayercontroller.h"
 #include "entity/cgamerules.h"
-#include "vsBots.h"
+#include "vsbots.h"
 #include "zombiereborn.h"
 #include "votemanager.h"
 #include "leader.h"

@@ -3,7 +3,7 @@
 
 #include "commands.h"
 #include "eventlistener.h"
-#include "vsBots.h"
+#include "vsbots.h"
 #include "ctimer.h"
 #include "utils/entity.h"
 #include "entity/cgamerules.h"

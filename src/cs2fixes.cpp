@@ -45,7 +45,7 @@
 #include "gameconfig.h"
 #include "votemanager.h"
 #include "zombiereborn.h"
-#include "vsBots.h"
+#include "vsbots.h"
 #include "httpmanager.h"
 #include "idlemanager.h"
 #include "discord.h"
