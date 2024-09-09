@@ -31,7 +31,7 @@ void MapCycle_OnGameEnd()
 	if (g_mapListIndex >= g_mapList.Count())
 		g_mapListIndex = 0;
 
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Next Map]\x01 %s", g_mapList[g_mapListIndex]);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Next Map]\x01 %s", g_mapList[g_mapListIndex].c_str());
 
 	new CTimer(10.0f, false, false, []()
 	{
