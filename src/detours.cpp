@@ -63,6 +63,7 @@ CUtlVector<CDetourBase *> g_vecDetours;
 
 DECLARE_DETOUR(BotProfileManager_Init, Detour_BotProfileManager_Init);
 DECLARE_DETOUR(CCSBot_GetPartPosition, Detour_CCSBot_GetPartPosition);
+DECLARE_DETOUR(CCSBot_PickNewAimSpot, Detour_CCSBot_PickNewAimSpot);
 DECLARE_DETOUR(UTIL_SayTextFilter, Detour_UTIL_SayTextFilter);
 DECLARE_DETOUR(UTIL_SayText2Filter, Detour_UTIL_SayText2Filter);
 DECLARE_DETOUR(IsHearingClient, Detour_IsHearingClient);
@@ -495,6 +496,27 @@ public:
 
 void* FASTCALL Detour_ProcessUsercmds(CCSPlayerController *pController, CUserCmd *cmds, int numcmds, bool paused, float margin)
 {
+	CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
+	if (pPawn->IsBot())
+	{
+		QAngle viewAngles = pPawn->m_angEyeAngles();
+
+		float useYaw = pPawn->m_pBot->m_lookYaw;
+		float angleDiff = fabsf(useYaw - viewAngles.y);
+
+		const float onTargetTolerance = 1.5f;
+		if (angleDiff < onTargetTolerance)
+		{
+			for (int i = 0; i < numcmds; i++)
+			{
+				pPawn->m_pBot->m_lookYawVel = 0.0f;
+				CMsgQAngle* pMsgQAngle = cmds[i].cmd.mutable_base()->mutable_viewangles();
+
+				pMsgQAngle->set_y(pPawn->m_pBot->m_lookYaw);
+			}
+		}
+	}
+
 	// Push fix only works properly if subtick movement is also disabled
 	if (!g_bDisableSubtick && !g_bUseOldPush)
 		return ProcessUsercmds(pController, cmds, numcmds, paused, margin);
@@ -544,14 +566,29 @@ void FASTCALL Detour_BotProfileManager_Init(BotProfileManager* botProfileManager
 	BotProfileManager_Init(botProfileManager, "botprofileZP.db", checksum);
 }
 
-char* FASTCALL Detour_CCSBot_GetPartPosition(CCSBot* pBot, CCSPlayerPawn* pPlayer, unsigned int part)
+Vector& FASTCALL Detour_CCSBot_GetPartPosition(CCSBot* pBot, CCSPlayerPawn* pPlayer, unsigned int part)
 {
 	// Makes gut to head. This is temporary solution, 
 	// Should detour CCSBot::PickNewAimSpot, and changes m_targetSpot vector to player head in future design
-	if (part == 1 && vsBots_IsBotHeadOnly(pBot))
-		part = 2;
+	//if (part == 1 && vsBots_IsBotHeadOnly(pBot))
+	//	part = 2;
 
-	return CCSBot_GetPartPosition(pBot, pPlayer, part);
+	Vector pos = CCSBot_GetPartPosition(pBot, pPlayer, part);
+	return pos;
+}
+
+void FASTCALL Detour_CCSBot_PickNewAimSpot(CCSBot* pBot)
+{
+	CCSBot_PickNewAimSpot(pBot);
+
+	CCSPlayerPawn* pEnemy = pBot->m_enemy.Get();
+	if (pEnemy && pEnemy->IsAlive() && pBot->m_isEnemyVisible)
+	{
+		float skill = pBot->GetLocalProfile()->m_skill;
+		const float sharpShooter = 0.8f;
+		if (skill >= sharpShooter && pBot->m_visibleEnemyParts & HEAD)
+			pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, HEAD);
+	}
 }
 
 float FASTCALL Detour_CCSPlayerPawn_GetMaxSpeed(CCSPlayerPawn* pPawn)

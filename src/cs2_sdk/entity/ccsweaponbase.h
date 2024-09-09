@@ -81,6 +81,7 @@ public:
 
 	SCHEMA_FIELD(gear_slot_t, m_GearSlot)
 	SCHEMA_FIELD(int, m_nPrice)
+	SCHEMA_FIELD(int, m_nKillAward)
 	SCHEMA_FIELD(int, m_nPrimaryReserveAmmoMax);
 };
 

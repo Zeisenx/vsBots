@@ -25,6 +25,7 @@ struct WeaponVDataMap_t
 	int itemDefIndex;
 	int maxClip1;
 	int maxAmmo;
+	int killAward;
 };
 
 void vsBots_OnLevelInit(char const* pMapName);
@@ -37,7 +38,6 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent);
 void vsBots_OnPlayerDeath(IGameEvent* pEvent);
 void vsBots_OnPlayerBlind(IGameEvent* pEvent);
 void vsBots_OnWeaponFire(IGameEvent* pEvent);
-bool vsBots_IsBotHeadOnly(CCSBot* pBot);
 bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo* inputInfo);
 bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon);
 void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis);

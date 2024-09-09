@@ -97,6 +97,7 @@ WeaponMapEntry_t WeaponMap[] = {
 	{{"hegrenade", "he"},				"weapon_hegrenade",		"HE Grenade",		300, 44, GEAR_SLOT_GRENADES, 1},
 	{{"molotov"},						"weapon_molotov",		"Molotov",			400, 46, GEAR_SLOT_GRENADES, 1},
 	{{"kevlar"},						"item_kevlar",			"Kevlar Vest",		650, 50, GEAR_SLOT_UTILITY},
+	{{"healthshot", "kit", "healthkit"},			"weapon_healthshot",			"Healthshot",		5000, 57, GEAR_SLOT_UTILITY},
 };
 
 bool g_bEnableWeapons = false;
