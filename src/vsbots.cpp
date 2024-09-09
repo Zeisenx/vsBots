@@ -150,7 +150,7 @@ void DuplicateSpawnPoint(int team, int maxCount)
 	if (addCount <= 0)
 		return;
 
-	for (int i = 1; i <= maxCount; i++)
+	for (int i = 1; i <= addCount; i++)
 	{
 		SpawnPoint* spawnEntity = CreateEntityByName<SpawnPoint>(g_botTeam == CS_TEAM_T ? "info_player_terrorist" : "info_player_counterterrorist");
 
