@@ -29,6 +29,9 @@
 extern CGameConfig *g_GameConfig;
 extern CCSGameRules* g_pGameRules;
 
+bool g_bGrenadeNoBlock = false;
+FAKE_BOOL_CVAR(cs2f_no_block_grenades, "Make grenade projectile no block.", g_bGrenadeNoBlock, false, false)
+
 void Patch_GetHammerUniqueId(CEntityInstance *pEntity)
 {
 	static int offset = g_GameConfig->GetOffset("GetHammerUniqueId");
@@ -47,6 +50,10 @@ void CEntityListener::OnEntitySpawned(CEntityInstance* pEntity)
 #endif
 
 	vsBots_OnEntitySpawned(pEntity);
+	if (g_bGrenadeNoBlock && V_stristr(pEntity->GetClassname(), "_projectile"))
+	{
+		reinterpret_cast<CBaseEntity*>(pEntity)->SetCollisionGroup(COLLISION_GROUP_DEBRIS);
+	}
 }
 
 void CEntityListener::OnEntityCreated(CEntityInstance* pEntity)
