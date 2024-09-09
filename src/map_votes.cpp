@@ -216,12 +216,6 @@ CON_COMMAND_CHAT(mapcooldowns, "- List the maps currently in cooldown")
 	}
 }
 
-GAME_EVENT_F(cs_win_panel_match)
-{
-	if (g_bVoteManagerEnable && !g_pMapVoteSystem->IsVoteOngoing())
-		g_pMapVoteSystem->StartVote();
-}
-
 GAME_EVENT_F(endmatch_mapvote_selecting_map)
 {
 	if (g_bVoteManagerEnable)

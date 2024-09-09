@@ -23,8 +23,12 @@ extern CGlobalVars* gpGlobals;
 
 enum ItemDefIndexIDs : int
 {
+	ITEMDEFINDEX_AUG = 8,
 	ITEMDEFINDEX_AWP = 9,
 	ITEMDEFINDEX_G3SG1 = 11,
+	ITEMDEFINDEX_M4A1 = 16,
+	ITEMDEFINDEX_P90 = 19,
+	ITEMDEFINDEX_BIZON = 26,
 	ITEMDEFINDEX_NEGEV = 28,
 	ITEMDEFINDEX_TASER = 31,
 	ITEMDEFINDEX_P250 = 36,
@@ -47,7 +51,7 @@ int g_botTeam = CS_TEAM_T;
 
 bool g_bForceSwitch;
 int g_difficulty = DIFFICULTY_MIN;
-bool g_bPlayerGlowEnabled = true;
+bool g_bPlayerGlowEnabled = false;
 FAKE_INT_CVAR(vsbots_forceswitch, "Force team switch", g_bForceSwitch, false, false)
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
 FAKE_BOOL_CVAR(vsbots_player_glow, "Player Glow", g_bPlayerGlowEnabled, false, false)
@@ -459,8 +463,6 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 		if (pGlowModelEnt && pVictimPawn)
 		{
 			float ratio = pVictimPawn->m_iHealth / (float)pVictimPawn->m_iMaxHealth;
-			if (pVictimPawn->m_iHealth == 0)
-				ratio = 0.0f;
 
 			int green = (int)(255 * ratio);
 			int red = 255 - green;
@@ -609,7 +611,8 @@ void vsBots_OnWeaponFire(IGameEvent* pEvent)
 	if (!pController)
 		return;
 
-	if (pController->IsBot() && V_strncmp(pController->GetPlayerName(), "[Boss] Crusher", 14) == 0)
+	if (pController->IsBot() && 
+		(V_strncmp(pController->GetPlayerName(), "[Boss] Crusher", 14) == 0 || V_strncmp(pController->GetPlayerName(), "[Boss] Exp203", 13) == 0))
 	{
 		auto pPawn = pController->GetPawn();
 		if (!pPawn)
@@ -679,12 +682,12 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 		if (V_strncmp(pController->GetPlayerName(), "[Boss] Stone", 12) == 0)
 			pThis->m_flStamina = 0.0;
 
+		CCSBot* pBot = pPawn->m_pBot;
+		if (!pBot)
+			return;
+
 		if (V_strncmp(pController->GetPlayerName(), "[Boss] Crusher", 14) == 0)
 		{
-			CCSBot* pBot = pPawn->m_pBot;
-			if (!pBot)
-				return;
-
 			CCSPlayer_WeaponServices* pWeaponServices = pPawn->m_pWeaponServices;
 			if (!pWeaponServices)
 				return;
@@ -697,15 +700,26 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 			if (gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)
 				pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
 
+			pPawn->m_iShotsFired = 0;
 			if (g_difficulty >= 9)
 			{
 				pWeaponServices->m_flNextAttack().m_Value = 0.0;
 				pWeapon->m_nNextPrimaryAttackTick = 1;
 				pWeapon->m_fAccuracyPenalty = 0.0;
-				pPawn->m_iShotsFired = 0;
 				pPawn->m_aimPunchAngle = QAngle(0, 0, 0);
 				pPawn->m_aimPunchAngleVel = QAngle(0, 0, 0);
 			}
+		}
+		if (V_strncmp(pController->GetPlayerName(), "[Boss] Exp203", 14) == 0)
+		{
+			CCSPlayer_WeaponServices* pWeaponServices = pPawn->m_pWeaponServices;
+			if (!pWeaponServices)
+				return;
+			
+			float notSeenEnemyTime = gpGlobals->curtime - pBot->m_lastSawEnemyTimestamp;
+			if ((pBot->m_isEnemyVisible || notSeenEnemyTime <= 3.0f) &&
+				gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)
+				pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
 		}
 	}
 }
@@ -736,10 +750,14 @@ void vsBots_OnEntitySpawned(CEntityInstance* pEntity)
 		{ITEMDEFINDEX_CZ75A, -1, 60, 300},
 		{ITEMDEFINDEX_REVOLVER, -1, 32, -1},
 		{ITEMDEFINDEX_USP_SILENCER, -1, 48, -1},
-		{ITEMDEFINDEX_M4A1_SILENCER, 30, 90, -1},
+		{ITEMDEFINDEX_M4A1_SILENCER, 30, 90, 450},
 		{ITEMDEFINDEX_P250, -1, 52, -1},
 		{ITEMDEFINDEX_AWP, -1, -1, 300},
 		{ITEMDEFINDEX_TASER, -1, -1, 1500},
+		{ITEMDEFINDEX_M4A1, -1, -1, 450},
+		{ITEMDEFINDEX_AUG, -1, -1, 450},
+		{ITEMDEFINDEX_P90, -1, -1, 600},
+		{ITEMDEFINDEX_BIZON, -1, -1, 900},
 	};
 
 	int weaponID = pWeapon->m_AttributeManager().m_Item().m_iItemDefinitionIndex;
@@ -789,7 +807,7 @@ void SetHumanHealth()
 {
 	int playerCount = GetHumanCount();
 
-	int health = MAX(100, 500 - 50 * (playerCount - 1));
+	int health = MAX(200, 500 - 30 * (playerCount - 1));
 
 	for (int i = 0; i < gpGlobals->maxClients; i++)
 	{

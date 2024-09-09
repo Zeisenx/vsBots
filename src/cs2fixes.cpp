@@ -45,6 +45,7 @@
 #include "gameconfig.h"
 #include "votemanager.h"
 #include "zombiereborn.h"
+#include "mapcycle.h"
 #include "vsbots.h"
 #include "httpmanager.h"
 #include "idlemanager.h"
@@ -971,6 +972,7 @@ void CS2Fixes::OnLevelInit( char const *pMapName,
 		ZR_OnLevelInit();
 
 	vsBots_OnLevelInit(pMapName);
+	MapCycle_OnLevelInit(pMapName);
 }
 
 // Potentially might not work

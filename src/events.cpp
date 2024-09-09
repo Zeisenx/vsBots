@@ -25,12 +25,14 @@
 #include "networkstringtabledefs.h"
 #include "entity/cbaseplayercontroller.h"
 #include "entity/cgamerules.h"
+#include "mapcycle.h"
 #include "vsbots.h"
 #include "zombiereborn.h"
 #include "votemanager.h"
 #include "leader.h"
 #include "recipientfilters.h"
 #include "panoramavote.h"
+#include "map_votes.h"
 
 #include "tier0/memdbgon.h"
 
@@ -40,6 +42,7 @@ extern CGameEntitySystem *g_pEntitySystem;
 extern CGlobalVars *gpGlobals;
 extern CCSGameRules *g_pGameRules;
 extern IVEngineServer2* g_pEngineServer2;
+extern CMapVoteSystem* g_pMapVoteSystem;
 
 extern int g_iRoundNum;
 
@@ -335,6 +338,14 @@ GAME_EVENT_F(round_end)
 		pPlayer->SetTotalHits(0);
 		pPlayer->SetTotalKills(0);
 	}
+}
+
+GAME_EVENT_F(cs_win_panel_match)
+{
+	if (g_bVoteManagerEnable && !g_pMapVoteSystem->IsVoteOngoing())
+		g_pMapVoteSystem->StartVote();
+
+	MapCycle_OnGameEnd();
 }
 
 GAME_EVENT_F(round_freeze_end)

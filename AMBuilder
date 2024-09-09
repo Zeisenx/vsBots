@@ -74,6 +74,7 @@ for sdk_target in MMSPlugin.sdk_targets:
     'src/discord.cpp',
     'src/map_votes.cpp',
     'src/user_preferences.cpp',
+    'src/mapcycle.cpp',
     'src/vsbots.cpp',
     'src/zombiereborn.cpp',
     'src/customio.cpp',

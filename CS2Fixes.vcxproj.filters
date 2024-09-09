@@ -49,6 +49,7 @@
     <ClCompile Include="src\utils\plat_unix.cpp" />
     <ClCompile Include="src\utils\plat_win.cpp" />
     <ClCompile Include="src\cs2_sdk\entity\cenvexplosion.h" />
+    <ClCompile Include="src\mapcycle.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\adminsystem.h" />
@@ -111,6 +112,7 @@
     <ClInclude Include="src\utils\module.h" />
     <ClInclude Include="src\utils\plat.h" />
     <ClInclude Include="src\utils\virtual.h" />
+    <ClInclude Include="src\mapcycle.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="configs\vsbots\botnames.txt" />
