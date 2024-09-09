@@ -8,9 +8,12 @@
 #include "utils/entity.h"
 #include "entity/cgamerules.h"
 #include "entity/cenvexplosion.h"
+#include "entity/ccsbot.h"
 #include "recipientfilters.h"
 #include <fstream>
 #include <regex>
+
+BotProfileManager* g_pTheBotProfiles = nullptr;
 
 extern IVEngineServer2* g_pEngineServer2;
 extern CCSGameRules* g_pGameRules;
@@ -43,17 +46,16 @@ int g_humanTeam = CS_TEAM_CT;
 int g_botTeam = CS_TEAM_T;
 
 bool g_bForceSwitch;
-int g_difficulty = 0;
+int g_difficulty = DIFFICULTY_MIN;
 bool g_bPlayerGlowEnabled = true;
 FAKE_INT_CVAR(vsbots_forceswitch, "Force team switch", g_bForceSwitch, false, false)
 FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
 FAKE_BOOL_CVAR(vsbots_player_glow, "Player Glow", g_bPlayerGlowEnabled, false, false)
 
-std::vector<std::string> g_vecBotNamesList;
 KeyValues* g_pKVPrintText;
 
 void LoadPrintTextKV();
-void DuplicateSpawnPoint();
+void DuplicateSpawnPoint(int team, int maxCount);
 void AddHumanBots();
 void SetHumanHealth();
 void EmitSoundToAll(const char* szPath, float volume = 1.0f);
@@ -95,8 +97,6 @@ void vsBots_OnLevelInit(char const* pMapName)
 	}
 
 	g_pEngineServer2->ServerCommand("exec cs2fixes/vsbots");
-
-	vsBots_LoadBotNames();
 }
 
 void LoadPrintTextKV()
@@ -136,18 +136,17 @@ void CPrintChatToAll(const char* msg, ...)
 	ClientPrintAll(HUD_PRINTTALK, bufStr.c_str());
 }
 
-void DuplicateSpawnPoint()
+void DuplicateSpawnPoint(int team, int maxCount)
 {
-	size_t botsCount = g_vecBotNamesList.size();
-
 	CUtlVector<SpawnPoint*>* botTeamSpawns = g_botTeam == CS_TEAM_T ? g_pGameRules->m_TerroristSpawnPoints() : g_pGameRules->m_CTSpawnPoints();
 
+	const int botsCount = 50;
 	size_t addCount = botsCount - botTeamSpawns->Count();
 	Message("DuplicateSpawnPoint() : addCount : %d\n", addCount);
 	if (addCount <= 0)
 		return;
 
-	for (int i = 1; i <= addCount; i++)
+	for (int i = 1; i <= maxCount; i++)
 	{
 		SpawnPoint* spawnEntity = CreateEntityByName<SpawnPoint>(g_botTeam == CS_TEAM_T ? "info_player_terrorist" : "info_player_counterterrorist");
 
@@ -159,10 +158,21 @@ void DuplicateSpawnPoint()
 	}
 }
 
+static char* CloneString(const char* str)
+{
+	char* cloneStr = new char[strlen(str) + 1];
+	strcpy(cloneStr, str);
+	return cloneStr;
+}
+
+void vsBots_Detour_BotProfileManager_InitPost(BotProfileManager* botProfileManager, const char* filename, unsigned int* checksum)
+{
+	vsBots_LoadBotNames();
+}
+
 void vsBots_LoadBotNames()
 {
 	Message("vsBots_LoadBotNames()\n");
-	g_vecBotNamesList.clear();
 	const char* pszFilePath = "addons/cs2fixes/configs/vsBots/botnames.txt";
 	char szPath[MAX_PATH];
 	V_snprintf(szPath, sizeof(szPath), "%s%s%s", Plat_GetGameDirectory(), "/csgo/", pszFilePath);
@@ -170,10 +180,15 @@ void vsBots_LoadBotNames()
 	std::string botName;
 	while (std::getline(infile, botName))
 	{
-		g_vecBotNamesList.push_back(botName);
+		if (g_pTheBotProfiles && !g_pTheBotProfiles->GetProfile(botName.c_str()))
+		{
+			BotProfile* pBotProfile = new BotProfile();
+			pBotProfile->m_name = CloneString(botName.c_str());
+
+			g_pTheBotProfiles->m_profileList.AddToTail(pBotProfile);
+		}
 	}
 }
-
 
 void vsBots_Precache(IEntityResourceManifest* pResourceManifest)
 {
@@ -187,11 +202,19 @@ void vsBots_OnRoundStart(IGameEvent* pEvent)
 	g_pEngineServer2->ServerCommand("bot_difficulty 3");
 	g_pEngineServer2->ServerCommand("mp_flinch_punch_scale 0.0");
 
-	DuplicateSpawnPoint();
-	for (auto& name : g_vecBotNamesList)
+	DuplicateSpawnPoint(g_botTeam, 50);
+	DuplicateSpawnPoint(g_humanTeam, 15);
+
+	FOR_EACH_LL(g_pTheBotProfiles->m_profileList, it)
 	{
+		BotProfile* profile = g_pTheBotProfiles->m_profileList[it];
+
+		if (V_strncmp(profile->GetName(), "[Boss]", 6) != 0 &&
+			V_strncmp(profile->GetName(), "[  *  ]", 7) != 0)
+			continue;
+
 		char szBotAddCmd[128];
-		V_snprintf(szBotAddCmd, sizeof(szBotAddCmd), "bot_add \"%s\"", name.c_str());
+		V_snprintf(szBotAddCmd, sizeof(szBotAddCmd), "bot_add \"%s\"", profile->GetName());
 		g_pEngineServer2->ServerCommand(szBotAddCmd);
 	}
 
@@ -246,6 +269,7 @@ void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex)
 	}
 }
 
+// @Todo : Clean up this shit, I guess no one can read this expect me
 void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 {
 	if (!pController->IsAlive())
@@ -310,14 +334,17 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		pBot->m_hasVisitedEnemySpawn = true; // it makes bot doesn't rush to enemy spawn
 
 		BotProfile* pBotProfile = pBot->GetLocalProfile();
-		float skill = MAX(1.0f, 0.15f * g_difficulty);
-		pBotProfile->m_skill = skill;
-		pBotProfile->m_aggression = skill;
-		pBotProfile->m_teamwork = 0.5f;
+		if (pController->m_iTeamNum == g_botTeam)
+		{
+			float skill = MIN(1.0f, 0.2f + 0.08f * g_difficulty);
+			pBotProfile->m_skill = skill;
+			pBotProfile->m_aggression = skill;
+			pBotProfile->m_teamwork = 0.5f;
 
-		float reactionTime = MAX(0.0f, 2.0f - 0.2f * g_difficulty);
-		pBotProfile->m_reactionTime = reactionTime;
-		pBotProfile->m_attackDelay = reactionTime;
+			float reactionTime = MAX(0.0f, 2.0f - 0.2f * g_difficulty);
+			pBotProfile->m_reactionTime = reactionTime;
+			pBotProfile->m_attackDelay = reactionTime;
+		}
 
 		if (V_strncmp(pBot->m_name, "[Boss]", 6) == 0)
 		{
@@ -749,7 +776,7 @@ int GetHumanCount()
 	for (int i = 0; i < gpGlobals->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
-		if (!pController || !pController->IsConnected() || pController->IsBot() || pController->m_iTeamNum() <= CS_TEAM_SPECTATOR)
+		if (!pController || !pController->IsConnected() || pController->IsBot() || pController->m_iTeamNum() != g_humanTeam)
 			continue;
 
 		playerCount++;
@@ -767,7 +794,7 @@ void SetHumanHealth()
 	for (int i = 0; i < gpGlobals->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
-		if (!pController || !pController->IsConnected() || pController->m_iTeamNum() <= CS_TEAM_SPECTATOR)
+		if (!pController || !pController->IsConnected() || pController->m_iTeamNum() != g_humanTeam)
 			continue;
 
 		CCSPlayerPawn* pPawn = pController->GetPlayerPawn();

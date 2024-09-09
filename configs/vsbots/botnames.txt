@@ -1,3 +1,10 @@
+[Human] PLAYER1
+[Human] PLAYER2
+[Human] PLAYER3
+[Human] PLAYER4
+[Human] PLAYER5
+[Human] PLAYER6
+[Human] PLAYER7
 [Boss] Crusher
 [Boss] Stone
 [Boss] Exp203

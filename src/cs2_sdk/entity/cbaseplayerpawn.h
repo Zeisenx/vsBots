@@ -37,8 +37,6 @@ public:
 	SCHEMA_FIELD(CPlayer_CameraServices*, m_pCameraServices)
 	SCHEMA_FIELD(CHandle<CBasePlayerController>, m_hController)
 
-	SCHEMA_FIELD(QAngle, v_angle)
-
 	// Drops any map-spawned weapons the pawn is holding
 	// NOTE: Currently very broken with map items (entities parented to weapons?) due to a game bug..? Needs further investigation/work
 	void DropMapWeapons()

@@ -57,6 +57,7 @@ extern CGameEntitySystem *g_pEntitySystem;
 extern IGameEventManager2 *g_gameEventManager;
 extern CCSGameRules *g_pGameRules;
 extern CMapVoteSystem *g_pMapVoteSystem;
+extern BotProfileManager* g_pTheBotProfiles;
 extern CUtlVector<CServerSideClient*>* GetClientList();
 
 CUtlVector<CDetourBase *> g_vecDetours;
@@ -504,7 +505,7 @@ void* FASTCALL Detour_ProcessUsercmds(CCSPlayerController *pController, CUserCmd
 		float useYaw = pPawn->m_pBot->m_lookYaw;
 		float angleDiff = fabsf(useYaw - viewAngles.y);
 
-		const float onTargetTolerance = 1.5f;
+		const float onTargetTolerance = 1.0f;
 		if (angleDiff < onTargetTolerance)
 		{
 			for (int i = 0; i < numcmds; i++)
@@ -563,7 +564,10 @@ CServerSideClient* FASTCALL Detour_GetFreeClient(int64_t unk1, const __m128i* un
 
 void FASTCALL Detour_BotProfileManager_Init(BotProfileManager* botProfileManager, const char *filename, unsigned int *checksum )
 {
+	g_pTheBotProfiles = botProfileManager;
 	BotProfileManager_Init(botProfileManager, "botprofileZP.db", checksum);
+
+	vsBots_Detour_BotProfileManager_InitPost(botProfileManager, "botprofileZP.db", checksum);
 }
 
 Vector& FASTCALL Detour_CCSBot_GetPartPosition(CCSBot* pBot, CCSPlayerPawn* pPlayer, unsigned int part)
@@ -588,6 +592,8 @@ void FASTCALL Detour_CCSBot_PickNewAimSpot(CCSBot* pBot)
 		const float sharpShooter = 0.8f;
 		if (skill >= sharpShooter && pBot->m_visibleEnemyParts & HEAD)
 			pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, HEAD);
+		else
+			pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, GUT);
 	}
 }
 
