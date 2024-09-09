@@ -65,6 +65,7 @@ CUtlVector<CDetourBase *> g_vecDetours;
 DECLARE_DETOUR(BotProfileManager_Init, Detour_BotProfileManager_Init);
 DECLARE_DETOUR(CCSBot_GetPartPosition, Detour_CCSBot_GetPartPosition);
 DECLARE_DETOUR(CCSBot_PickNewAimSpot, Detour_CCSBot_PickNewAimSpot);
+DECLARE_DETOUR(CCSPlayerPawn_ClientCommand, Detour_CCSPlayerPawn_ClientCommand);
 DECLARE_DETOUR(UTIL_SayTextFilter, Detour_UTIL_SayTextFilter);
 DECLARE_DETOUR(UTIL_SayText2Filter, Detour_UTIL_SayText2Filter);
 DECLARE_DETOUR(IsHearingClient, Detour_IsHearingClient);
@@ -594,6 +595,27 @@ void FASTCALL Detour_CCSBot_PickNewAimSpot(CCSBot* pBot)
 			pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, HEAD);
 		else
 			pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, GUT);
+	}
+}
+
+void FASTCALL Detour_CCSPlayerPawn_ClientCommand(CCSPlayerPawn *pPawn, const CCommand &args)
+{
+	//Message("Detour_CCSPlayerPawn_ClientCommand(%d, \"%s\")\n", pPawn->GetOriginalController()->GetPlayerName(), args.GetCommandString());
+	CCSPlayerPawn_ClientCommand(pPawn, args);
+
+	// Workaround fix CT bot can't buy m4a1
+	CCSPlayerController* pController = pPawn->GetOriginalController();
+	if (pController && pController->IsBot() && !V_strncmp(args.Arg(0), "buy", 3) && !V_strncmp(args.Arg(1), "m4a1", 4))
+	{
+		if (pController->m_pInGameMoneyServices->m_iAccount >= 3100)
+		{
+			CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
+			if (pPawn)
+			{
+				pPawn->m_pItemServices->GiveNamedItem(rand() % 2 == 0 ? "weapon_m4a1" : "weapon_m4a1_silencer");
+				pController->m_pInGameMoneyServices->m_iAccount -= 3100;
+			}
+		}
 	}
 }
 

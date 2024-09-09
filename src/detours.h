@@ -55,6 +55,7 @@ void FlushAllDetours();
 void FASTCALL Detour_BotProfileManager_Init( BotProfileManager *botProfileManager, const char *filename, unsigned int *checksum );
 Vector& FASTCALL Detour_CCSBot_GetPartPosition(CCSBot* pBot, CCSPlayerPawn* pPlayer, unsigned int part);
 void FASTCALL Detour_CCSBot_PickNewAimSpot(CCSBot* pBot);
+void FASTCALL Detour_CCSPlayerPawn_ClientCommand(CCSPlayerPawn* pPawn, const CCommand& args);
 void FASTCALL Detour_UTIL_SayTextFilter(IRecipientFilter &, const char *, CCSPlayerController *, uint64);
 void FASTCALL Detour_UTIL_SayText2Filter(IRecipientFilter &, CCSPlayerController *, uint64, const char *, const char *, const char *, const char *, const char *);
 bool FASTCALL Detour_IsHearingClient(void*, int);
