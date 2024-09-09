@@ -1017,7 +1017,7 @@ const char *CS2Fixes::GetLogTag()
 
 const char *CS2Fixes::GetAuthor()
 {
-	return "xen, Poggu, and the Source2ZE community";
+	return "Zeisen (Credit to Source2ZE comunity)";
 }
 
 const char *CS2Fixes::GetDescription()
@@ -1027,10 +1027,10 @@ const char *CS2Fixes::GetDescription()
 
 const char *CS2Fixes::GetName()
 {
-	return "CS2Fixes";
+	return "vsBots";
 }
 
 const char *CS2Fixes::GetURL()
 {
-	return "https://github.com/Source2ZE/CS2Fixes";
+	return "https://github.com/Zeisenx/vsBots";
 }

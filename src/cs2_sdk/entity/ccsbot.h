@@ -15,6 +15,76 @@ enum VisiblePartType
     FEET = 0x10
 };
 
+class CountdownTimer
+{
+private:
+    [[maybe_unused]] uint8_t __pad0000[0x8]; // 0x0
+public:
+    // MNetworkEnable
+    float m_duration; // 0x8	
+    // MNetworkEnable
+    GameTime_t m_timestamp; // 0xc	
+    // MNetworkEnable
+    float m_timescale; // 0x10	
+    // MNetworkEnable
+    WorldGroupId_t m_nWorldGroupId; // 0x14	
+};
+
+class BotState
+{
+public:
+    virtual void OnEnter(CCSBot* bot) { }				///< when state is entered
+    virtual void OnUpdate(CCSBot* bot) { }			///< state behavior
+    virtual void OnExit(CCSBot* bot) { }				///< when state exited
+    virtual const char* GetName(void) const = 0;		///< return state name
+};
+
+class AttackState : public BotState
+{
+public:
+    virtual void OnEnter(CCSBot* bot);
+    virtual void OnUpdate(CCSBot* bot);
+    virtual void OnExit(CCSBot* bot);
+    virtual const char* GetName(void) const { return "Attack"; }
+
+    void SetCrouchAndHold(bool crouch) { m_crouchAndHold = crouch; }
+
+protected:
+    enum DodgeStateType
+    {
+        STEADY_ON,
+        SLIDE_LEFT,
+        SLIDE_RIGHT,
+        JUMP,
+
+        NUM_ATTACK_STATES
+    };
+    DodgeStateType m_dodgeState;
+    float m_nextDodgeStateTimestamp;
+
+    CountdownTimer m_repathTimer;
+    float m_scopeTimestamp;
+
+    bool m_haveSeenEnemy;										///< false if we haven't yet seen the enemy since we started this attack (told by a friend, etc)
+    bool m_isEnemyHidden;										///< true we if we have lost line-of-sight to our enemy
+    float m_reacquireTimestamp;									///< time when we can fire again, after losing enemy behind cover
+    float m_shieldToggleTimestamp;								///< time to toggle shield deploy state
+    bool m_shieldForceOpen;										///< if true, open up and shoot even if in danger
+
+    float m_pinnedDownTimestamp;								///< time when we'll consider ourselves "pinned down" by the enemy
+
+    bool m_crouchAndHold;
+    bool m_didAmbushCheck;
+    bool m_shouldDodge;
+    bool m_firstDodge;
+
+    bool m_isCoward;											///< if true, we'll retreat if outnumbered during this fight
+    CountdownTimer m_retreatTimer;
+
+    void StopAttacking(CCSBot* bot);
+    void Dodge(CCSBot* bot);									///< do dodge behavior
+};
+
 class BotProfile
 {
 public:

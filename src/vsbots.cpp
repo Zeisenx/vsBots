@@ -710,12 +710,13 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 				pPawn->m_aimPunchAngleVel = QAngle(0, 0, 0);
 			}
 		}
-		if (V_strncmp(pController->GetPlayerName(), "[Boss] Exp203", 14) == 0)
+		if (V_strncmp(pController->GetPlayerName(), "[Boss] Exp203", 13) == 0)
 		{
 			CCSPlayer_WeaponServices* pWeaponServices = pPawn->m_pWeaponServices;
 			if (!pWeaponServices)
 				return;
-			
+
+			pPawn->m_iShotsFired = 0;
 			float notSeenEnemyTime = gpGlobals->curtime - pBot->m_lastSawEnemyTimestamp;
 			if ((pBot->m_isEnemyVisible || notSeenEnemyTime <= 3.0f) &&
 				gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)

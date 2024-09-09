@@ -65,6 +65,7 @@ CUtlVector<CDetourBase *> g_vecDetours;
 DECLARE_DETOUR(BotProfileManager_Init, Detour_BotProfileManager_Init);
 DECLARE_DETOUR(CCSBot_GetPartPosition, Detour_CCSBot_GetPartPosition);
 DECLARE_DETOUR(CCSBot_PickNewAimSpot, Detour_CCSBot_PickNewAimSpot);
+DECLARE_DETOUR(AttackState_OnEnter, Detour_AttackState_OnEnter);
 DECLARE_DETOUR(CCSPlayerPawn_ClientCommand, Detour_CCSPlayerPawn_ClientCommand);
 DECLARE_DETOUR(UTIL_SayTextFilter, Detour_UTIL_SayTextFilter);
 DECLARE_DETOUR(UTIL_SayText2Filter, Detour_UTIL_SayText2Filter);
@@ -596,6 +597,19 @@ void FASTCALL Detour_CCSBot_PickNewAimSpot(CCSBot* pBot)
 		else
 			pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, GUT);
 	}
+}
+
+void FASTCALL Detour_AttackState_OnEnter(AttackState *state, CCSBot* pBot)
+{
+	const float crouchFarRange = 750.0f;
+	float crouchChance = 20.0 * (1.0f - pBot->GetLocalProfile()->m_aggression);
+	if ((pBot->m_pPlayer->GetAbsOrigin() - pBot->m_enemy->GetAbsOrigin()).IsLengthGreaterThan(crouchFarRange))
+		crouchChance = 50.0f;
+	if (pBot->m_visibleEnemyParts == HEAD)
+		crouchChance = 0.0f;
+
+	state->SetCrouchAndHold(rand() % 100 <= (int)crouchChance);
+	AttackState_OnEnter(state, pBot);
 }
 
 void FASTCALL Detour_CCSPlayerPawn_ClientCommand(CCSPlayerPawn *pPawn, const CCommand &args)
