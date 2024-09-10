@@ -499,26 +499,7 @@ public:
 
 void* FASTCALL Detour_ProcessUsercmds(CCSPlayerController *pController, CUserCmd *cmds, int numcmds, bool paused, float margin)
 {
-	CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
-	if (pPawn->IsBot())
-	{
-		QAngle viewAngles = pPawn->m_angEyeAngles();
-
-		float useYaw = pPawn->m_pBot->m_lookYaw;
-		float angleDiff = fabsf(useYaw - viewAngles.y);
-
-		const float onTargetTolerance = 1.0f;
-		if (angleDiff < onTargetTolerance)
-		{
-			for (int i = 0; i < numcmds; i++)
-			{
-				pPawn->m_pBot->m_lookYawVel = 0.0f;
-				CMsgQAngle* pMsgQAngle = cmds[i].cmd.mutable_base()->mutable_viewangles();
-
-				pMsgQAngle->set_y(pPawn->m_pBot->m_lookYaw);
-			}
-		}
-	}
+	vsBots_Detour_ProcessUsercmds(pController, cmds, numcmds, paused, margin);
 
 	// Push fix only works properly if subtick movement is also disabled
 	if (!g_bDisableSubtick && !g_bUseOldPush)

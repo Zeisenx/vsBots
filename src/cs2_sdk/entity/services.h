@@ -150,6 +150,7 @@ class CCSPlayerController_InGameMoneyServices
 public:
 	DECLARE_SCHEMA_CLASS(CCSPlayerController_InGameMoneyServices);
 
+	SCHEMA_FIELD(int, m_iMoneyEarnedForNextRound)
     SCHEMA_FIELD(int, m_iAccount)
 };
 

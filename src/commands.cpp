@@ -158,7 +158,7 @@ void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 	if (!pItemServices || !pWeaponServices)
 		return;
 
-	int money = player->m_pInGameMoneyServices->m_iAccount;
+	int money = player->m_pInGameMoneyServices->m_iAccount - player->m_pInGameMoneyServices->m_iMoneyEarnedForNextRound;
 
 	if (money < weaponEntry.iPrice)
 	{

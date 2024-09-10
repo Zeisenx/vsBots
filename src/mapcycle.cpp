@@ -10,7 +10,7 @@ int g_mapListIndex = 0;
 std::string g_forceNextMap;
 
 FAKE_INT_CVAR(cs2f_mapcycle_index, "", g_mapListIndex, false, false)
-FAKE_STRING_CVAR(cs2f_nextmap, "", g_forceNextMap, false, false)
+FAKE_STRING_CVAR(cs2f_nextmap, "", g_forceNextMap, false)
 
 CUtlVector<std::string> g_mapList;
 

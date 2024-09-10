@@ -10,6 +10,7 @@
 #include "entity/cenvexplosion.h"
 #include "entity/ccsbot.h"
 #include "recipientfilters.h"
+#include "cs_usercmd.pb.h"
 #include <fstream>
 #include <regex>
 
@@ -797,6 +798,41 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 				pWeapon->m_fAccuracyPenalty = 0.0;
 				pPawn->m_aimPunchAngle = QAngle(0, 0, 0);
 				pPawn->m_aimPunchAngleVel = QAngle(0, 0, 0);
+			}
+		}
+	}
+}
+
+class CUserCmd
+{
+public:
+	[[maybe_unused]] char pad0[0x10];
+	CSGOUserCmdPB cmd;
+	[[maybe_unused]] char pad1[0x38];
+#ifdef PLATFORM_WINDOWS
+	[[maybe_unused]] char pad2[0x8];
+#endif
+};
+
+void vsBots_Detour_ProcessUsercmds(CCSPlayerController* pController, CUserCmd* cmds, int numcmds, bool paused, float margin)
+{
+	CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
+	if (pPawn->IsBot())
+	{
+		QAngle viewAngles = pPawn->m_angEyeAngles();
+
+		float useYaw = pPawn->m_pBot->m_lookYaw;
+		float angleDiff = fabsf(useYaw - viewAngles.y);
+
+		const float onTargetTolerance = 1.0f;
+		if (angleDiff < onTargetTolerance)
+		{
+			for (int i = 0; i < numcmds; i++)
+			{
+				pPawn->m_pBot->m_lookYawVel = 0.0f;
+				CMsgQAngle* pMsgQAngle = cmds[i].cmd.mutable_base()->mutable_viewangles();
+
+				pMsgQAngle->set_y(pPawn->m_pBot->m_lookYaw);
 			}
 		}
 	}

@@ -34,6 +34,7 @@ void vsBots_BulletImpact(IGameEvent* pEvent);
 bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo* inputInfo);
 bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon);
 void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis);
+void vsBots_Detour_ProcessUsercmds(CCSPlayerController* pController, CUserCmd* cmds, int numcmds, bool paused, float margin);
 void vsBots_Detour_BotProfileManager_InitPost(BotProfileManager* botProfileManager, const char* filename, unsigned int* checksum);
 void vsBots_OnEntitySpawned(CEntityInstance* pEntity);
 void vsBots_LoadBotNames();

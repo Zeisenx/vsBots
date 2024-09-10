@@ -73,6 +73,7 @@ jobs:
         working-directory: CS2Fixes
         shell: bash
         run: |
+          chcp 65001
           mkdir build && cd build
           python ../configure.py --enable-optimize --sdks cs2
           ambuild
