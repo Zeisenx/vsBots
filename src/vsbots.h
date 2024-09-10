@@ -30,6 +30,7 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent);
 void vsBots_OnPlayerDeath(IGameEvent* pEvent);
 void vsBots_OnPlayerBlind(IGameEvent* pEvent);
 void vsBots_OnWeaponFire(IGameEvent* pEvent);
+void vsBots_BulletImpact(IGameEvent* pEvent);
 bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo* inputInfo);
 bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon);
 void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis);

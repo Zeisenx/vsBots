@@ -364,6 +364,7 @@ GAME_EVENT_F(round_time_warning)
 
 GAME_EVENT_F(bullet_impact)
 {
+	vsBots_BulletImpact(pEvent);
 	if (g_bEnableLeader)
 		Leader_BulletImpact(pEvent);
 }

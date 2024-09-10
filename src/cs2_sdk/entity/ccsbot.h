@@ -214,7 +214,7 @@ public:
     SCHEMA_FIELD(CHandle<CCSPlayerPawn>, m_enemy)
     SCHEMA_FIELD(bool, m_isEnemyVisible)
     SCHEMA_FIELD(uint8_t, m_visibleEnemyParts)
-    SCHEMA_FIELD(uint8_t, m_lastSawEnemyTimestamp)
+    SCHEMA_FIELD(float, m_lastSawEnemyTimestamp)
 
     BotProfile* GetLocalProfile()
     {

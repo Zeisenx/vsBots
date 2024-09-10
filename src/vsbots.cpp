@@ -20,6 +20,7 @@ extern CCSGameRules* g_pGameRules;
 extern CGlobalVars* gpGlobals;
 
 #define BOSSMODEL_DEFAULT "characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl"
+#define ADMINMODEL_TEST "characters/models/nozb1/adult_neptune_player_model/adult_neptune_player_model.vmdl"
 
 enum ItemDefIndexIDs : int
 {
@@ -197,8 +198,10 @@ void vsBots_LoadBotNames()
 void vsBots_Precache(IEntityResourceManifest* pResourceManifest)
 {
 	pResourceManifest->AddResource(BOSSMODEL_DEFAULT);
-
+	pResourceManifest->AddResource(ADMINMODEL_TEST);
+	
 	pResourceManifest->AddResource("particles/explosions_fx/explosion_c4_500.vpcf");
+	pResourceManifest->AddResource("particles/cs2fixes/leader_tracer.vpcf");
 }
 
 void vsBots_OnRoundStart(IGameEvent* pEvent)
@@ -311,6 +314,9 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			ZEPlayer* pPlayerTarget = pController->GetZEPlayer();
 			if (g_bPlayerGlowEnabled && !pPlayerTarget->GetGlowModel())
 				pPlayerTarget->StartGlow(Color(0, 255, 0, 255), -1);
+
+			if (pPlayerTarget->IsAdminFlagSet(ADMFLAG_GENERIC))
+				pPawn->SetModel(ADMINMODEL_TEST);
 		}
 
 		if (!pController->IsBot())
@@ -323,6 +329,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			RestrictWeapon(pPawn, ITEMDEFINDEX_SMOKEGRENADE);
 			RestrictWeapon(pPawn, ITEMDEFINDEX_MOLOTOV);
 			RestrictWeapon(pPawn, ITEMDEFINDEX_INCGRENADE);
+			RestrictWeapon(pPawn, ITEMDEFINDEX_TASER);
 
 			return -1.0f;
 		}
@@ -345,7 +352,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pBotProfile->m_aggression = skill;
 			pBotProfile->m_teamwork = 0.5f;
 
-			float reactionTime = MAX(0.0f, 2.0f - 0.2f * g_difficulty);
+			float reactionTime = MAX(0.0f, 3.0f - 0.3f * g_difficulty);
 			pBotProfile->m_reactionTime = reactionTime;
 			pBotProfile->m_attackDelay = reactionTime;
 		}
@@ -370,6 +377,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		{
 			if (!bIsPistolRound)
 			{
+				pPawn->m_pItemServices->StripPlayerWeapons(false);
 				pPawn->m_pItemServices->GiveNamedItem("weapon_xm1014");
 				g_bCrusherHasShotgun = true;
 			}
@@ -637,6 +645,63 @@ void vsBots_OnWeaponFire(IGameEvent* pEvent)
 	}
 }
 
+void vsBots_BulletImpact(IGameEvent* pEvent)
+{
+	CCSPlayerPawn* pPawn = (CCSPlayerPawn*)pEvent->GetPlayerPawn("userid");
+	if (!pPawn)
+		return;
+	
+	CCSPlayerController* pController = pPawn->GetOriginalController();
+	if (!pController)
+		return;
+
+	Color clTint = Color(0, 0, 0, 0);
+	if (pController->IsBot())
+	{
+		if (V_strncmp(pController->GetPlayerName(), "[Boss] Crusher", 14) == 0)
+			clTint = Color(255, 0, 0, 255);
+		if (V_strncmp(pController->GetPlayerName(), "[Boss] Exp203", 14) == 0)
+			clTint = Color(0, 255, 0, 255);
+	}
+	else
+	{
+		ZEPlayer *pPlayer = pController->GetZEPlayer();
+		if (pPlayer->GetAdminFlags() & ADMFLAG_GENERIC)
+		{
+			Color colors[] = { Color(232, 20, 22, 255), Color(255, 165, 0, 255), Color(255, 235, 54, 255), Color(121, 195, 20, 255), Color(72, 125, 231, 255), Color(75, 54, 157, 255), Color(112, 54, 157, 255) };
+			clTint = colors[rand() % sizeof(colors) / sizeof(Color)];
+		}
+	}
+
+	if (clTint.a() == 0)
+		return;
+
+	CBasePlayerWeapon* pWeapon = pPawn->m_pWeaponServices->m_hActiveWeapon.Get();
+
+	CParticleSystem* particle = CreateEntityByName<CParticleSystem>("info_particle_system");
+
+	// Teleport particle to muzzle_flash attachment of player's weapon
+	particle->AcceptInput("SetParent", "!activator", pWeapon, nullptr);
+	particle->AcceptInput("SetParentAttachment", "muzzle_flash");
+
+	CEntityKeyValues* pKeyValues = new CEntityKeyValues();
+
+	// Event contains other end of the particle
+	Vector vecData = Vector(pEvent->GetFloat("x"), pEvent->GetFloat("y"), pEvent->GetFloat("z"));
+
+	pKeyValues->SetString("effect_name", "particles/cs2fixes/leader_tracer.vpcf");
+	pKeyValues->SetInt("data_cp", 1);
+	pKeyValues->SetVector("data_cp_value", vecData);
+	pKeyValues->SetInt("tint_cp", 2);
+	pKeyValues->SetColor("tint_cp_color", clTint);
+	pKeyValues->SetBool("start_active", true);
+
+	particle->DispatchSpawn(pKeyValues);
+
+	UTIL_AddEntityIOEvent(particle, "DestroyImmediately", nullptr, nullptr, "", 0.1f);
+	UTIL_AddEntityIOEvent(particle, "Kill", nullptr, nullptr, "", 0.12f);
+}
+
 bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon)
 {
 	CCSPlayerPawn* pPawn = pWeaponServices->__m_pChainEntity();
@@ -697,7 +762,7 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 			if (!pWeapon)
 				return;
 
-			if (gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)
+			if (pBot->m_isEnemyVisible && gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)
 				pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
 
 			pPawn->m_iShotsFired = 0;
@@ -716,11 +781,23 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 			if (!pWeaponServices)
 				return;
 
+			CBasePlayerWeapon* pBaseWeapon = pWeaponServices->m_hActiveWeapon.Get();
+			CCSWeaponBase* pWeapon = (CCSWeaponBase*)pBaseWeapon;
+			if (!pWeapon)
+				return;
+
 			pPawn->m_iShotsFired = 0;
 			float notSeenEnemyTime = gpGlobals->curtime - pBot->m_lastSawEnemyTimestamp;
 			if ((pBot->m_isEnemyVisible || notSeenEnemyTime <= 3.0f) &&
 				gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)
 				pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
+
+			if (g_difficulty >= 10)
+			{
+				pWeapon->m_fAccuracyPenalty = 0.0;
+				pPawn->m_aimPunchAngle = QAngle(0, 0, 0);
+				pPawn->m_aimPunchAngleVel = QAngle(0, 0, 0);
+			}
 		}
 	}
 }

@@ -7,6 +7,10 @@
 #include <fstream>
 
 int g_mapListIndex = 0;
+std::string g_forceNextMap;
+
+FAKE_INT_CVAR(cs2f_mapcycle_index, "", g_mapListIndex, false, false)
+FAKE_STRING_CVAR(cs2f_nextmap, "", g_forceNextMap, false, false)
 
 CUtlVector<std::string> g_mapList;
 
@@ -35,7 +39,7 @@ void MapCycle_OnGameEnd()
 
 	new CTimer(10.0f, false, false, []()
 	{
-		const char* nextMapName = g_mapList[g_mapListIndex].c_str();
+		const char* nextMapName = g_forceNextMap.size() == 0 ? g_mapList[g_mapListIndex].c_str() : g_forceNextMap.c_str();
 		bool isWorkshop = V_strncmp(nextMapName, "de_", 3) != 0 && V_strncmp(nextMapName, "cs_", 3) != 0;
 
 		char command[128];
