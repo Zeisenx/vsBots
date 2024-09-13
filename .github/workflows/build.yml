@@ -35,7 +35,6 @@ jobs:
         os: [windows-latest]
         include:
           - os: windows-latest
-            container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk
     steps:
       - name: Checkout
         uses: actions/checkout@v4
