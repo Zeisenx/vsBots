@@ -19,8 +19,8 @@ void ZDatabase::Init()
 		return;
 	}
 
-	KeyValues *kvConfig = new KeyValues("Database");
-	KeyValues::AutoDelete autoDelte(kvConfig);
+	KeyValues *kvConfig = new KeyValues("ZDatabase");
+	//KeyValues::AutoDelete autoDelete(kvConfig);
 	const char* pszPath = "addons/cs2fixes/configs/database.cfg";
 	if (!kvConfig->LoadFromFile(g_pFullFileSystem, pszPath))
 	{

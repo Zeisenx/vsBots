@@ -1,4 +1,4 @@
-"Database"
+"ZDatabase"
 {
     "host"          "db_ip"
     "user"          "db_user"

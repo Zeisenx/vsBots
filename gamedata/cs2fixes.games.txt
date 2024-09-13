@@ -360,6 +360,12 @@
 				"windows"		"\x48\x8B\xC4\x53\x56\x57\x48\x81\xEC\x60\x01\x00\x00"
 			}
 
+			"BotDefuseBombFix"
+			{
+				"library"	"server"
+				"windows"	"\x45\x33\xC9\x45\x33\xC0\x48\x8B\xD3\x48\x8B\xCF\xE8\x2A\x2A\x2A\x2A\x84\xC0\x0F\x84\x2A\x2A\x2A\x2A"
+			}
+
 			// The only function with "weapon_shield" and does fminf with 260.0 earlier
 			"CCSPlayerPawn_GetMaxSpeed"
 			{
@@ -510,6 +516,10 @@
 			{
 				"windows"		"\xE9\x2C\x00\x00\x00\x90"
 				"linux"			"\xE9\x15\x00\x00\x00"
+			}
+			"BotDefuseBombFix"
+			{
+				"windows"		"\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90\x90"
 			}
 			// Make func_physbox pass itself as the caller in OnPlayerUse
 			// pCaller = inputdata->pCaller ->  pCaller = this

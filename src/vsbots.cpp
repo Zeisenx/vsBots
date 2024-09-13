@@ -26,6 +26,7 @@ extern CGlobalVars* gpGlobals;
 
 enum ItemDefIndexIDs : short
 {
+	ITEMDEFINDEX_DEAGLE = 1,
 	ITEMDEFINDEX_AUG = 8,
 	ITEMDEFINDEX_AWP = 9,
 	ITEMDEFINDEX_FAMAS = 10,
@@ -66,6 +67,8 @@ FAKE_BOOL_CVAR(vsbots_player_glow, "Player Glow", g_bPlayerGlowEnabled, false, f
 
 KeyValues* g_pKVPrintText;
 
+void RestrictWeapons(CCSPlayerPawn* pPawn);
+void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex);
 void LoadPrintTextKV();
 void DuplicateSpawnPoint(int team, int maxCount);
 void AddHumanBots();
@@ -261,6 +264,31 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 		g_iDifficulty = MAX(DIFFICULTY_MIN, g_iDifficulty - 1);
 
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_iDifficulty);
+
+	for (int i = 0; i < gpGlobals->maxClients; i++)
+	{
+		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
+		if (!pController || !pController->IsConnected())
+			continue;
+
+		CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
+		if (!pPawn || !pPawn->IsAlive())
+			continue;
+
+		RestrictWeapons(pPawn);
+	}
+
+}
+
+void RestrictWeapons(CCSPlayerPawn* pPawn)
+{
+	RestrictWeapon(pPawn, ITEMDEFINDEX_G3SG1);
+	RestrictWeapon(pPawn, ITEMDEFINDEX_SCAR20);
+	RestrictWeapon(pPawn, ITEMDEFINDEX_NEGEV);
+	RestrictWeapon(pPawn, ITEMDEFINDEX_SMOKEGRENADE);
+	RestrictWeapon(pPawn, ITEMDEFINDEX_MOLOTOV);
+	RestrictWeapon(pPawn, ITEMDEFINDEX_INCGRENADE);
+	RestrictWeapon(pPawn, ITEMDEFINDEX_TASER);
 }
 
 void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex)
@@ -347,13 +375,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		{
 			CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
 
-			RestrictWeapon(pPawn, ITEMDEFINDEX_G3SG1);
-			RestrictWeapon(pPawn, ITEMDEFINDEX_SCAR20);
-			RestrictWeapon(pPawn, ITEMDEFINDEX_NEGEV);
-			RestrictWeapon(pPawn, ITEMDEFINDEX_SMOKEGRENADE);
-			RestrictWeapon(pPawn, ITEMDEFINDEX_MOLOTOV);
-			RestrictWeapon(pPawn, ITEMDEFINDEX_INCGRENADE);
-			RestrictWeapon(pPawn, ITEMDEFINDEX_TASER);
+			RestrictWeapons(pPawn);
 
 			return -1.0f;
 		}
@@ -467,16 +489,18 @@ bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo
 			if (pWeapon && V_strncmp(pWeapon->GetClassname(), "weapon_knife", 12) == 0)
 				inputInfo->m_flDamage = 120.0f;
 		}
+		if (V_stristr(pszInflictorClass, "_projectile") && !(inputInfo->m_bitsDamageType & DMG_BLAST))
+			inputInfo->m_flDamage = 120.0f;
 	}
 
 
 	if (pAttackerController->IsBot())
 	{
-		if (V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Crusher", 14) == 0 ||
-			V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Stone", 12) == 0)
-		{
+		if (V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Crusher", 14) == 0)
+			inputInfo->m_flDamage *= 1.0f + g_iDifficulty;
+
+		if (V_strncmp(pAttackerController->GetPlayerName(), "[Boss] Stone", 12) == 0)
 			inputInfo->m_flDamage = 9999.0f;
-		}
 	}
 
 	return true;
@@ -510,9 +534,7 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 	{
 		if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Crusher", 14) == 0)
 		{
-			float regenTime = 0.2f;
-			if (g_iDifficulty >= 4) regenTime = 0.15f;
-			if (g_iDifficulty >= 8) regenTime = 0.1f;
+			float regenTime = 0.5f;
 
 			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
 			new CTimer(regenTime, false, false, [victimHandle]()
@@ -898,13 +920,14 @@ void vsBots_OnEntitySpawned(CEntityInstance* pEntity)
 
 	// Todo : move to config
 	WeaponVDataMap_t WeaponMap[] = {
+		{ITEMDEFINDEX_DEAGLE, 10, 40, 600},
 		{ITEMDEFINDEX_CZ75A, -1, 60, 300},
 		{ITEMDEFINDEX_REVOLVER, -1, 32, -1},
 		{ITEMDEFINDEX_USP_SILENCER, -1, 48, -1},
 		{ITEMDEFINDEX_FAMAS, 35, 105, -1},
 		{ITEMDEFINDEX_M4A1_SILENCER, 35, 105, 450},
 		{ITEMDEFINDEX_P250, -1, 52, -1},
-		{ITEMDEFINDEX_AWP, -1, -1, 300},
+		{ITEMDEFINDEX_AWP, -1, -1, 0},
 		{ITEMDEFINDEX_TASER, -1, -1, 1500},
 		{ITEMDEFINDEX_M4A1, 40, 120, 450},
 		{ITEMDEFINDEX_AUG, 40, 120, 450},
@@ -937,7 +960,7 @@ void vsBots_OnTick()
 	for (int i = 0; i < gpGlobals->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
-		if (!pController || !pController->IsConnected() || pController->m_iTeamNum() <= CS_TEAM_SPECTATOR)
+		if (!pController || !pController->IsConnected())
 			continue;
 
 		pController->m_szClan = CUtlSymbolLarge(" ");
@@ -1035,6 +1058,12 @@ bool VSBots::OnSayText(CCSPlayerController* pAuthor, const char* pText, IRecipie
 	return false;
 }
 
+
+CON_COMMAND_CHAT_FLAGS(savedb, "Save DB", ADMFLAG_GENERIC)
+{
+	VSBots::SaveDB();
+}
+
 void VSBots::SaveDB()
 {
 	char query[1024];
@@ -1056,7 +1085,7 @@ void VSBots::SaveDB()
 			continue;
 		
 		std::string escapedName = ZDatabase::GetConnection()->Escape(pController->GetPlayerName());
-		V_snprintf(query, sizeof(query), mysql_players_upsert, pPlayer->GetSteamId64(), escapedName, dbInfo.iKills, dbInfo.iBossKills, dbInfo.iPoint);
+		V_snprintf(query, sizeof(query), mysql_players_upsert, pPlayer->GetSteamId64(), escapedName.c_str(), dbInfo.iKills, dbInfo.iBossKills, dbInfo.iPoint);
 		txn.queries.push_back(query);
 	}
 
@@ -1107,7 +1136,7 @@ void SetHumanHealth()
 			continue;
 
 		CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
-		if (!pPawn)
+		if (!pPawn || !pPawn->IsAlive())
 			continue;
 
 		pPawn->m_iHealth = health;

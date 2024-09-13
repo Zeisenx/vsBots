@@ -104,6 +104,39 @@ bool g_bEnableWeapons = false;
 
 FAKE_BOOL_CVAR(cs2f_weapons_enable, "Whether to enable weapon commands", g_bEnableWeapons, false, false)
 
+// this is workaround, need to find unlazy solution
+int GetTeamFromWeaponName(const char* pszClassname)
+{
+	if (V_strncmp(pszClassname, "weapon_", 7) != 0)
+		return CS_TEAM_NONE;
+
+	const char* pszWeaponName = pszClassname + 7;
+
+	if (V_strcmp(pszWeaponName, "glock") == 0 ||
+		V_strcmp(pszWeaponName, "tec9") == 0 ||
+		V_strcmp(pszWeaponName, "sawedoff") == 0 ||
+		V_strcmp(pszWeaponName, "mac10") == 0 ||
+		V_strcmp(pszWeaponName, "galilar") == 0 ||
+		V_strcmp(pszWeaponName, "ak47") == 0 ||
+		V_strcmp(pszWeaponName, "sg553") == 0 ||
+		V_strcmp(pszWeaponName, "g3sg1") == 0)
+		return CS_TEAM_T;
+
+	if (V_strcmp(pszWeaponName, "hkp2000") == 0 ||
+		V_strcmp(pszWeaponName, "fiveseven") == 0 ||
+		V_strcmp(pszWeaponName, "usp_silencer") == 0 ||
+		V_strcmp(pszWeaponName, "mag7") == 0 ||
+		V_strcmp(pszWeaponName, "mp9") == 0 ||
+		V_strcmp(pszWeaponName, "aug") == 0 ||
+		V_strcmp(pszWeaponName, "famas") == 0 ||
+		V_strcmp(pszWeaponName, "m4a1") == 0 ||
+		V_strcmp(pszWeaponName, "m4a1_silencer") == 0 ||
+		V_strcmp(pszWeaponName, "scar20") == 0)
+		return CS_TEAM_CT;
+
+	return CS_TEAM_NONE;
+}
+
 void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 {
 	if (!g_bEnableWeapons || !player || !player->m_hPawn())
@@ -214,7 +247,16 @@ void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 	}
 
 	player->m_pInGameMoneyServices->m_iAccount = money - weaponEntry.iPrice;
+
+	int weaponTeam = GetTeamFromWeaponName(weaponEntry.szClassName);
+	int playerTeam = player->m_iTeamNum;
+	bool teamDiff = weaponTeam != playerTeam;
+	if (teamDiff)
+		player->SwitchTeam(weaponTeam);
 	pItemServices->GiveNamedItem(weaponEntry.szClassName);
+	if (teamDiff)
+		player->SwitchTeam(playerTeam);
+
 	ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX"You have purchased %s for $%i", weaponEntry.szWeaponName, weaponEntry.iPrice);
 }
 
