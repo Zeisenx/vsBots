@@ -20,6 +20,45 @@
 
 #pragma once
 
+#include "igameevents.h"
+#include "entity/ccsplayercontroller.h"
+#include "entity/ccsplayerpawn.h"
+
+constexpr char mysql_players_create[] = R"(
+    CREATE TABLE IF NOT EXISTS players ( 
+        SteamID64 BIGINT UNSIGNED NOT NULL, 
+        Name TEXT,
+        Kills INTEGER NOT NULL DEFAULT 0, 
+        BossKills INTEGER NOT NULL DEFAULT 0, 
+        Point INTEGER NOT NULL DEFAULT 0, 
+        Created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, 
+        PRIMARY KEY(SteamID64)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+)";
+
+constexpr char mysql_players_select[] = R"(
+    SELECT Kills, BossKills, Point
+        FROM players
+    WHERE SteamID64 = %lld
+)";
+
+constexpr char mysql_players_upsert[] = R"(
+    INSERT INTO players (SteamID64, Name, Kills, BossKills, Point)
+            VALUES (%lld, '%s', %d, %d, %d)
+            ON DUPLICATE KEY UPDATE
+            SteamID64=VALUES(SteamID64), Name=VALUES(Name),
+            Kills=VALUES(Kills), BossKills=VALUES(BossKills), Point=VALUES(Point)
+)";
+
+class VSBots
+{
+public:
+    static void OnDBConnected();
+    static void OnAuthenticated(ZEPlayer* pPlayer);
+    static void OnClientDisconnect(CPlayerSlot slot);
+    static bool OnSayText(CCSPlayerController* pAuthor, const char *pText, IRecipientFilter& filter);
+    static void SaveDB();
+};
+
 void vsBots_OnLevelInit(char const* pMapName);
 void vsBots_Precache(IEntityResourceManifest* pResourceManifest);
 void vsBots_OnRoundStart(IGameEvent* pEvent);
@@ -38,3 +77,5 @@ void vsBots_Detour_ProcessUsercmds(CCSPlayerController* pController, CUserCmd* c
 void vsBots_Detour_BotProfileManager_InitPost(BotProfileManager* botProfileManager, const char* filename, unsigned int* checksum);
 void vsBots_OnEntitySpawned(CEntityInstance* pEntity);
 void vsBots_LoadBotNames();
+void vsBots_OnGameEnd();
+void vsBots_OnTick();

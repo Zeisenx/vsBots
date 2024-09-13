@@ -61,6 +61,7 @@
 #include "cs_gameevents.pb.h"
 #include "gameevents.pb.h"
 #include "leader.h"
+#include "database.h"
 
 #include "tier0/memdbgon.h"
 
@@ -623,6 +624,8 @@ void CS2Fixes::AllPluginsLoaded()
 	 */
 
 	Message( "AllPluginsLoaded\n" );
+
+	ZDatabase::Init();
 }
 
 CUtlVector<CServerSideClient *> *GetClientList()
@@ -745,6 +748,7 @@ void CS2Fixes::Hook_ClientDisconnect( CPlayerSlot slot, ENetworkDisconnectionRea
 	if (!pPlayer)
 		return;
 
+	VSBots::OnClientDisconnect(slot);
 	g_pAdminSystem->AddDisconnectedPlayer(pszName, xuid, pPlayer ? pPlayer->GetIpAddress() : "");
 	g_playerManager->OnClientDisconnect(slot);
 }
@@ -796,6 +800,7 @@ void CS2Fixes::Hook_GameFramePost(bool simulating, bool bFirstTick, bool bLastTi
 	if (g_bEnableZR)
 		CZRRegenTimer::Tick();
 
+	vsBots_OnTick();
     EntityHandler_OnGameFramePost(simulating, gpGlobals->tickcount);
 }
 

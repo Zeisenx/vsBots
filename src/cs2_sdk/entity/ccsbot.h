@@ -98,9 +98,9 @@ public:
         m_weaponPreferenceCount = 0;
 
         m_aimFocusInitial = 0.0f;
-        m_aimFocusDecay = 1.0f;
+        m_aimFocusDecay = 0.01f;
         m_aimFocusOffsetScale = 0.0f;
-        m_aimFocusInterval = .5f;
+        m_aimFocusInterval = 0.01f;
 
         m_cost = 0;
         m_skin = 0;

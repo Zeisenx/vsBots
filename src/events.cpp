@@ -345,6 +345,7 @@ GAME_EVENT_F(cs_win_panel_match)
 	if (g_bVoteManagerEnable && !g_pMapVoteSystem->IsVoteOngoing())
 		g_pMapVoteSystem->StartVote();
 
+	vsBots_OnGameEnd();
 	MapCycle_OnGameEnd();
 }
 

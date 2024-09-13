@@ -5,3 +5,6 @@
 [submodule "hl2sdk-manifests"]
 	path = hl2sdk-manifests
 	url = https://github.com/alliedmodders/hl2sdk-manifests
+[submodule "vendor/sql_mm"]
+	path = vendor/sql_mm
+	url = https://github.com/zer0k-z/sql_mm

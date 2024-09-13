@@ -34,6 +34,7 @@
 #include "leader.h"
 #include "tier0/vprof.h"
 #include "networksystem/inetworkmessages.h"
+#include "vsbots.h"
 
 #include "tier0/memdbgon.h"
 
@@ -106,6 +107,8 @@ void ZEPlayer::OnAuthenticated()
 	CheckAdmin();
 	CheckInfractions();
 	g_pUserPreferencesSystem->PullPreferences(GetPlayerSlot().Get());
+
+	VSBots::OnAuthenticated(this);
 }
 
 void ZEPlayer::CheckInfractions()

@@ -11,6 +11,7 @@
 #include "entity/ccsbot.h"
 #include "recipientfilters.h"
 #include "cs_usercmd.pb.h"
+#include "database.h"
 #include <fstream>
 #include <regex>
 
@@ -23,11 +24,13 @@ extern CGlobalVars* gpGlobals;
 #define BOSSMODEL_DEFAULT "characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl"
 #define ADMINMODEL_TEST "characters/models/nozb1/adult_neptune_player_model/adult_neptune_player_model.vmdl"
 
-enum ItemDefIndexIDs : int
+enum ItemDefIndexIDs : short
 {
 	ITEMDEFINDEX_AUG = 8,
 	ITEMDEFINDEX_AWP = 9,
+	ITEMDEFINDEX_FAMAS = 10,
 	ITEMDEFINDEX_G3SG1 = 11,
+	ITEMDEFINDEX_M249 = 14,
 	ITEMDEFINDEX_M4A1 = 16,
 	ITEMDEFINDEX_P90 = 19,
 	ITEMDEFINDEX_BIZON = 26,
@@ -35,6 +38,7 @@ enum ItemDefIndexIDs : int
 	ITEMDEFINDEX_TASER = 31,
 	ITEMDEFINDEX_P250 = 36,
 	ITEMDEFINDEX_SCAR20 = 38,
+	ITEMDEFINDEX_SSG08 = 40,
 	ITEMDEFINDEX_SMOKEGRENADE = 45,
 	ITEMDEFINDEX_MOLOTOV = 46,
 	ITEMDEFINDEX_INCGRENADE = 48,
@@ -51,11 +55,13 @@ bool g_bCrusherHasShotgun = false;
 int g_humanTeam = CS_TEAM_CT;
 int g_botTeam = CS_TEAM_T;
 
+bool g_bScoreboardRankUpdate = true;
+
 bool g_bForceSwitch;
-int g_difficulty = DIFFICULTY_MIN;
+int g_iDifficulty = DIFFICULTY_MIN;
 bool g_bPlayerGlowEnabled = false;
 FAKE_INT_CVAR(vsbots_forceswitch, "Force team switch", g_bForceSwitch, false, false)
-FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_difficulty, false, false)
+FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_iDifficulty, false, false)
 FAKE_BOOL_CVAR(vsbots_player_glow, "Player Glow", g_bPlayerGlowEnabled, false, false)
 
 KeyValues* g_pKVPrintText;
@@ -144,7 +150,7 @@ void CPrintChatToAll(const char* msg, ...)
 
 void DuplicateSpawnPoint(int team, int maxCount)
 {
-	CUtlVector<SpawnPoint*>* botTeamSpawns = g_botTeam == CS_TEAM_T ? g_pGameRules->m_TerroristSpawnPoints() : g_pGameRules->m_CTSpawnPoints();
+	CUtlVector<SpawnPoint*>* botTeamSpawns = team == CS_TEAM_T ? g_pGameRules->m_TerroristSpawnPoints() : g_pGameRules->m_CTSpawnPoints();
 
 	const int botsCount = 50;
 	size_t addCount = botsCount - botTeamSpawns->Count();
@@ -154,7 +160,7 @@ void DuplicateSpawnPoint(int team, int maxCount)
 
 	for (int i = 1; i <= addCount; i++)
 	{
-		SpawnPoint* spawnEntity = CreateEntityByName<SpawnPoint>(g_botTeam == CS_TEAM_T ? "info_player_terrorist" : "info_player_counterterrorist");
+		SpawnPoint* spawnEntity = CreateEntityByName<SpawnPoint>(team == CS_TEAM_T ? "info_player_terrorist" : "info_player_counterterrorist");
 
 		CEntityKeyValues* pKeyValues = new CEntityKeyValues();
 
@@ -205,8 +211,14 @@ void vsBots_Precache(IEntityResourceManifest* pResourceManifest)
 	pResourceManifest->AddResource("particles/cs2fixes/leader_tracer.vpcf");
 }
 
+void vsBots_OnGameEnd()
+{
+	g_bScoreboardRankUpdate = false;
+}
+
 void vsBots_OnRoundStart(IGameEvent* pEvent)
 {
+	g_bScoreboardRankUpdate = true;
 	g_pEngineServer2->ServerCommand("bot_difficulty 3");
 	g_pEngineServer2->ServerCommand("mp_flinch_punch_scale 0.0");
 
@@ -232,7 +244,7 @@ void vsBots_OnRoundStart(IGameEvent* pEvent)
 void vsBots_OnRoundFreezeEnd(IGameEvent* pEvent)
 {
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Zeisen Project Discord]\x01 https://discord.gg/tDZUnpaumD");
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Bot Level]\x01 %d", g_difficulty);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Bot Level]\x01 %d", g_iDifficulty);
 	CPrintChatToAll(g_pKVPrintText->GetString("Message_WeaponRestrict", "Weapon Restrict"));
 }
 
@@ -242,13 +254,13 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 	if (winner <= 1)
 		return;
 	
-	int oldLevel = g_difficulty;
+	int oldLevel = g_iDifficulty;
 	if (winner == g_humanTeam)
-		g_difficulty = MIN(DIFFICULTY_MAX, g_difficulty + 1);
+		g_iDifficulty = MIN(DIFFICULTY_MAX, g_iDifficulty + 1);
 	else
-		g_difficulty = MAX(DIFFICULTY_MIN, g_difficulty - 1);
+		g_iDifficulty = MAX(DIFFICULTY_MIN, g_iDifficulty - 1);
 
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d -> %d", oldLevel, g_difficulty);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_iDifficulty);
 }
 
 void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex)
@@ -284,7 +296,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		return;
 	
 	CHandle<CCSPlayerController> handle = pController->GetHandle();
-	new CTimer(0.05f, false, false, [handle]()
+	new CTimer(0.0f, false, false, [handle]()
 	{
 		CCSPlayerController* pController = (CCSPlayerController*)handle.Get();
 		if (!pController)
@@ -308,7 +320,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 
 		if (pController->m_iTeamNum == g_humanTeam)
 		{
-			int health = MAX(100, g_difficulty == 0 ? 999 : (500 - 50 * (g_difficulty - 1)));
+			int health = MAX(100, g_iDifficulty == 0 ? 999 : (500 - 50 * (g_iDifficulty - 1)));
 			SetHumanHealth();
 			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
 
@@ -318,6 +330,17 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 
 			if (pPlayerTarget->IsAdminFlagSet(ADMFLAG_GENERIC))
 				pPawn->SetModel(ADMINMODEL_TEST);
+
+			if (pController->IsBot())
+			{
+				BotProfile* pBotProfile = pBot->GetLocalProfile();
+				pBotProfile->m_skill = 1.0f;
+				pBotProfile->m_aggression = 1.0f;
+				pBotProfile->m_teamwork = 1.0f;
+
+				pBotProfile->m_reactionTime = 0.0f;
+				pBotProfile->m_attackDelay = 0.0f;
+			}
 		}
 
 		if (!pController->IsBot())
@@ -348,12 +371,12 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		BotProfile* pBotProfile = pBot->GetLocalProfile();
 		if (pController->m_iTeamNum == g_botTeam)
 		{
-			float skill = MIN(1.0f, 0.2f + 0.08f * g_difficulty);
+			float skill = MIN(1.0f, 0.2f + 0.08f * (g_iDifficulty-1));
 			pBotProfile->m_skill = skill;
 			pBotProfile->m_aggression = skill;
 			pBotProfile->m_teamwork = 0.5f;
 
-			float reactionTime = MAX(0.0f, 3.0f - 0.3f * g_difficulty);
+			float reactionTime = MAX(0.0f, 3.0f - 0.3f * (g_iDifficulty-1));
 			pBotProfile->m_reactionTime = reactionTime;
 			pBotProfile->m_attackDelay = reactionTime;
 		}
@@ -364,6 +387,8 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pPawn->m_ArmorValue = 9999;
 			if (!bIsPistolRound)
 				pPawn->m_pItemServices->m_bHasHelmet = true;
+
+			pController->m_pActionTrackingServices->m_matchStats().m_iDamage = 9999.0f;
 
 			pController->m_iScore = 50;
 			pController->m_pInGameMoneyServices->m_iAccount = 0;
@@ -388,17 +413,18 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pController->m_iScore = 100;
 
 			pPawn->m_clrRender = Color(255, 0, 0, 255);
+			pController->m_pActionTrackingServices->m_matchStats().m_iDamage = 99999.0f;
 		}
 
 		if (V_strncmp(pBot->m_name, "[Boss] Stone", 12) == 0)
 		{
 			pPawn->m_clrRender = Color(0, 0, 0, 255);
-			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_difficulty) - 1));
+			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_iDifficulty) - 1));
 
-			int health = 600 + g_difficulty * 650;
+			int health = 600 + g_iDifficulty * 650;
 			pPawn->m_iHealth = health;
 
-			pController->GetZEPlayer()->SetSpeedMod(1.0 + g_difficulty * 0.03);
+			pController->GetZEPlayer()->SetSpeedMod(1.0 + g_iDifficulty * 0.03);
 		}
 
 		if (V_strncmp(pBot->m_name, "[Boss] Exp203", 13) == 0)
@@ -485,8 +511,8 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 		if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Crusher", 14) == 0)
 		{
 			float regenTime = 0.2f;
-			if (g_difficulty >= 4) regenTime = 0.15f;
-			if (g_difficulty >= 8) regenTime = 0.1f;
+			if (g_iDifficulty >= 4) regenTime = 0.15f;
+			if (g_iDifficulty >= 8) regenTime = 0.1f;
 
 			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
 			new CTimer(regenTime, false, false, [victimHandle]()
@@ -524,11 +550,22 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 
 	if (pVictim->IsBot())
 	{
+		if (!pAttacker->IsBot() && !g_pGameRules->m_bWarmupPeriod)
+		{
+			DBInfo info = pAttacker->GetZEPlayer()->GetDBInfo();
+			info.iKills += 1;
+
+			if (V_strncmp(pVictim->GetPlayerName(), "[Boss]", 6) == 0)
+				info.iBossKills += 1;
+
+			pAttacker->GetZEPlayer()->SetDBInfo(info);
+		}
+
 		if (V_strncmp(pVictim->GetPlayerName(), "[Boss]", 6) == 0)
 		{
 			CPrintChatToAll(g_pKVPrintText->GetString("Message_BossKill", "BossKill %s %s"), 
 				pAttacker->GetPlayerName(), pVictim->GetPlayerName());
-			EmitSoundToAll("UI.ArmsRace.BecomeTeamLeader", 1.0);
+			EmitSoundToAll("UI.ArmsRace.BecomeTeamLeader");
 
 			if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Exp203", 14) == 0)
 			{
@@ -767,7 +804,7 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 				pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
 
 			pPawn->m_iShotsFired = 0;
-			if (g_difficulty >= 9)
+			if (g_iDifficulty >= 9)
 			{
 				pWeaponServices->m_flNextAttack().m_Value = 0.0;
 				pWeapon->m_nNextPrimaryAttackTick = 1;
@@ -793,7 +830,7 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 				gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)
 				pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
 
-			if (g_difficulty >= 10)
+			if (g_iDifficulty >= 10)
 			{
 				pWeapon->m_fAccuracyPenalty = 0.0;
 				pPawn->m_aimPunchAngle = QAngle(0, 0, 0);
@@ -864,14 +901,17 @@ void vsBots_OnEntitySpawned(CEntityInstance* pEntity)
 		{ITEMDEFINDEX_CZ75A, -1, 60, 300},
 		{ITEMDEFINDEX_REVOLVER, -1, 32, -1},
 		{ITEMDEFINDEX_USP_SILENCER, -1, 48, -1},
-		{ITEMDEFINDEX_M4A1_SILENCER, 30, 90, 450},
+		{ITEMDEFINDEX_FAMAS, 35, 105, -1},
+		{ITEMDEFINDEX_M4A1_SILENCER, 35, 105, 450},
 		{ITEMDEFINDEX_P250, -1, 52, -1},
 		{ITEMDEFINDEX_AWP, -1, -1, 300},
 		{ITEMDEFINDEX_TASER, -1, -1, 1500},
-		{ITEMDEFINDEX_M4A1, -1, -1, 450},
-		{ITEMDEFINDEX_AUG, -1, -1, 450},
+		{ITEMDEFINDEX_M4A1, 40, 120, 450},
+		{ITEMDEFINDEX_AUG, 40, 120, 450},
 		{ITEMDEFINDEX_P90, -1, -1, 600},
 		{ITEMDEFINDEX_BIZON, -1, -1, 900},
+		{ITEMDEFINDEX_M249, 150, 300, -1},
+		{ITEMDEFINDEX_SSG08, -1, -1, 600},
 	};
 
 	int weaponID = pWeapon->m_AttributeManager().m_Item().m_iItemDefinitionIndex;
@@ -889,12 +929,149 @@ void vsBots_OnEntitySpawned(CEntityInstance* pEntity)
 	}
 }
 
+void vsBots_OnTick()
+{
+	if (!g_bScoreboardRankUpdate)
+		return;
+	
+	for (int i = 0; i < gpGlobals->maxClients; i++)
+	{
+		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
+		if (!pController || !pController->IsConnected() || pController->m_iTeamNum() <= CS_TEAM_SPECTATOR)
+			continue;
+
+		pController->m_szClan = CUtlSymbolLarge(" ");
+		if (pController->IsBot())
+		{
+			CCSBot* pBot = pController->GetPlayerPawn()->m_pBot;
+			if (!pBot)
+				continue;
+
+			pController->m_iCompetitiveWins = 2;
+			if (V_strncmp(pController->GetPlayerName(), "[  *  ]", 7) == 0)
+			{
+				BotProfile* pBotProfile = pBot->GetLocalProfile();
+				pController->m_iCompetitiveRankType = 11;
+
+				int skillScore = (int)(15000.0f * pBotProfile->m_skill);
+				int attackDelayScore = (int)(15000.0f * (1.0 - (pBotProfile->m_attackDelay / 3.0)));
+
+				pController->m_iCompetitiveRanking = skillScore + attackDelayScore;
+			}
+			else if (V_strncmp(pController->GetPlayerName(), "[Human]", 7) != 0)
+			{
+				pController->m_iCompetitiveRankType = 12;
+
+				int rank = 18;
+				if (V_strncmp(pController->GetPlayerName(), "[Boss] Crusher", 14) == 0)
+					rank = g_iDifficulty >= 9 ? 18 : 17;
+				if (V_strncmp(pController->GetPlayerName(), "[Boss] Stone", 12) == 0)
+					rank = g_iDifficulty >= 10 ? 17 : 16;
+				if (V_strncmp(pController->GetPlayerName(), "[Boss] Exp203", 13) == 0)
+					rank = g_iDifficulty >= 11 ? 17 : 16;
+
+				pController->m_iCompetitiveRanking = rank;
+			}
+		}
+		else
+		{
+			DBInfo info = pController->GetZEPlayer()->GetDBInfo();
+			int rating = info.iKills + info.iBossKills * 10;
+			pController->m_iCompetitiveRankType = 11;
+			pController->m_iCompetitiveRanking = rating;
+		}
+	}
+}
+
+void VSBots::OnDBConnected()
+{
+	ZDatabase::GetConnection()->Query(mysql_players_create, [](ISQLQuery* test) {});
+}
+
+void VSBots::OnAuthenticated(ZEPlayer* pPlayer)
+{
+	char query[1024];
+	V_snprintf(query, sizeof(query), mysql_players_select, pPlayer->GetSteamId64());
+
+	ZEPlayerHandle handle = pPlayer->GetHandle();
+	ZDatabase::GetConnection()->Query(query, [handle](ISQLQuery* query)
+		{
+			ZEPlayer* pPlayer = handle.Get();
+			if (!pPlayer)
+				return;
+
+			DBInfo info;
+			info.bDataLoaded = true;
+			info.iKills = 0;
+			info.iBossKills = 0;
+			info.iPoint = 0;
+
+			ISQLResult *results = query->GetResultSet();
+			if (results->FetchRow())
+			{
+				info.iKills = results->GetInt(0);
+				info.iBossKills = results->GetInt(1);
+				info.iPoint = results->GetInt(2);
+			}
+
+			pPlayer->SetDBInfo(info);
+		});
+}
+
+void VSBots::OnClientDisconnect(CPlayerSlot slot)
+{
+	SaveDB();
+}
+
+bool VSBots::OnSayText(CCSPlayerController* pAuthor, const char* pText, IRecipientFilter& filter)
+{
+	DBInfo info = pAuthor->GetZEPlayer()->GetDBInfo();
+	int level = 1 + (info.iKills + info.iBossKills * 10) / 100;
+
+	const char* pColorTag = pAuthor->m_iTeamNum == CS_TEAM_T ? "\x09" : "\x0C";
+
+	ClientPrintFilter(filter, HUD_PRINTTALK, "\x01 \x04[Lv.%d]%s %s :\x01 %s", level, pColorTag, pAuthor->GetPlayerName(), pText);
+
+	return false;
+}
+
+void VSBots::SaveDB()
+{
+	char query[1024];
+
+	Transaction txn;
+
+	for (int i = 0; i < gpGlobals->maxClients; i++)
+	{
+		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
+		if (!pController || pController->IsBot())
+			continue;
+
+		ZEPlayer* pPlayer = pController->GetZEPlayer();
+		if (!pPlayer || !pPlayer->IsAuthenticated())
+			continue;
+
+		DBInfo dbInfo = pPlayer->GetDBInfo();
+		if (!dbInfo.bDataLoaded)
+			continue;
+		
+		std::string escapedName = ZDatabase::GetConnection()->Escape(pController->GetPlayerName());
+		V_snprintf(query, sizeof(query), mysql_players_upsert, pPlayer->GetSteamId64(), escapedName, dbInfo.iKills, dbInfo.iBossKills, dbInfo.iPoint);
+		txn.queries.push_back(query);
+	}
+
+	if (txn.queries.size() == 0)
+		return;
+
+	ZDatabase::GetConnection()->ExecuteTransaction(txn, ZDatabase::OnGenericTxnSuccess, ZDatabase::OnGenericTxnFailure);
+}
+
 void EmitSoundToAll(const char* szPath, float volume)
 {
 	for (int i = 0; i < gpGlobals->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
-		if (!pController || !pController->IsConnected() || pController->IsBot() || pController->m_iTeamNum() <= CS_TEAM_SPECTATOR)
+		if (!pController || !pController->IsConnected() || pController->IsBot())
 			continue;
 
 		CSingleRecipientFilter filter(pController->GetPlayerSlot());
@@ -940,6 +1117,9 @@ void SetHumanHealth()
 
 void AddHumanBots()
 {
+	if (g_pGameRules->m_bWarmupPeriod)
+		return;
+
 	int playerCount = GetHumanCount();
 	if (playerCount == 0)
 		return;

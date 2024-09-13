@@ -316,6 +316,29 @@ void ClientPrintAll(int hud_dest, const char *msg, ...)
 	ConMsg("%s\n", buf);
 }
 
+void ClientPrintFilter(IRecipientFilter& filter, int hud_dest, const char* msg, ...)
+{
+	va_list args;
+	va_start(args, msg);
+
+	char buf[256];
+	V_vsnprintf(buf, sizeof(buf), msg, args);
+
+	va_end(args);
+
+	INetworkMessageInternal* pNetMsg = g_pNetworkMessages->FindNetworkMessagePartial("TextMsg");
+	auto data = pNetMsg->AllocateMessage()->ToPB<CUserMessageTextMsg>();
+
+	data->set_dest(hud_dest);
+	data->add_param(buf);
+
+	g_gameEventSystem->PostEventAbstract(-1, false, &filter, pNetMsg, data, 0);
+
+	delete data;
+
+	ConMsg("%s\n", buf);
+}
+
 void ClientPrint(CCSPlayerController *player, int hud_dest, const char *msg, ...)
 {
 	va_list args;

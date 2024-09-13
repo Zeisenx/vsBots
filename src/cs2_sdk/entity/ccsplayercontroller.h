@@ -48,6 +48,9 @@ public:
 	SCHEMA_FIELD(int32_t, m_iRoundScore)
 	SCHEMA_FIELD(int32_t, m_iRoundsWon)
 	SCHEMA_FIELD(int32_t, m_iMVPs)
+	SCHEMA_FIELD(int32_t, m_iCompetitiveRanking)
+	SCHEMA_FIELD(int32_t, m_iCompetitiveWins)
+	SCHEMA_FIELD(int8_t, m_iCompetitiveRankType)
 	SCHEMA_FIELD(float, m_flSmoothedPing)
 
 	static CCSPlayerController* FromPawn(CCSPlayerPawn* pawn)

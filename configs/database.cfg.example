@@ -1,0 +1,7 @@
+"Database"
+{
+    "host"          "db_ip"
+    "user"          "db_user"
+    "pass"          "db_password"
+    "database"      "db_database"
+}

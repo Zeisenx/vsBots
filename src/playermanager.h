@@ -29,6 +29,14 @@
 #include "entity/cparticlesystem.h"
 #include "gamesystem.h"
 
+struct DBInfo
+{
+	int iKills;
+	int iBossKills;
+	int iPoint;
+	bool bDataLoaded;
+};
+
 #define DECAL_PREF_KEY_NAME "hide_decals"
 #define HIDE_DISTANCE_PREF_KEY_NAME "hide_distance"
 #define SOUND_STATUS_PREF_KEY_NAME "sound_status"
@@ -121,6 +129,11 @@ public:
 		m_flMaxSpeed = 1.f;
 		m_iLastInputs = IN_NONE;
 		m_iLastInputTime = std::time(0);
+
+		m_dbInfo.bDataLoaded = false;
+		m_dbInfo.iKills = 0;
+		m_dbInfo.iBossKills = 0;
+		m_dbInfo.iPoint = 0;
 	}
 
 	~ZEPlayer()
@@ -176,6 +189,7 @@ public:
 	void UpdateLastInputTime() { m_iLastInputTime = std::time(0); }
 	void SetMaxSpeed(float flMaxSpeed) { m_flMaxSpeed = flMaxSpeed; }
 	void ReplicateConVar(const char* pszName, const char* pszValue);
+	void SetDBInfo(DBInfo info) { m_dbInfo = info; }
 
 	bool IsMuted() { return m_bMuted; }
 	bool IsGagged() { return m_bGagged; }
@@ -209,6 +223,7 @@ public:
 	float GetMaxSpeed() { return m_flMaxSpeed; }
 	uint64 GetLastInputs() { return m_iLastInputs; }
 	std::time_t GetLastInputTime() { return m_iLastInputTime; }
+	DBInfo GetDBInfo() { return m_dbInfo; }
 	
 	void OnSpawn();
 	void OnAuthenticated();
@@ -262,6 +277,7 @@ private:
 	float m_flMaxSpeed;
 	uint64 m_iLastInputs;
 	std::time_t m_iLastInputTime;
+	DBInfo m_dbInfo;
 };
 
 class CPlayerManager

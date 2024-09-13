@@ -59,6 +59,7 @@ class CCSGameRules : public CGameRules
 public:
 	DECLARE_SCHEMA_CLASS(CCSGameRules)
 
+	SCHEMA_FIELD(bool, m_bWarmupPeriod)
 	SCHEMA_FIELD(float, m_fMatchStartTime)
 	SCHEMA_FIELD(float, m_flGameStartTime)
 	SCHEMA_FIELD(int, m_totalRoundsPlayed)

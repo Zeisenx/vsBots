@@ -49,6 +49,7 @@ class CCSPlayerController_ActionTrackingServices
 public:
 	DECLARE_SCHEMA_CLASS(CCSPlayerController_ActionTrackingServices)
 
+	SCHEMA_FIELD_POINTER(CUtlVector<CSPerRoundStats_t>, m_perRoundStats)
 	SCHEMA_FIELD(CSMatchStats_t, m_matchStats)
 };
 

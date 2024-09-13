@@ -31,6 +31,7 @@
 
 typedef void (*FnChatCommandCallback_t)(const CCommand &args, CCSPlayerController *player);
 
+class CRecipientFilter;
 class CChatCommand;
 
 extern CUtlMap<uint32, CChatCommand*> g_CommandList;
@@ -43,6 +44,7 @@ extern bool g_bEnableStopSound;
 
 void ClientPrintAll(int destination, const char *msg, ...);
 void ClientPrint(CCSPlayerController *player, int destination, const char *msg, ...);
+void ClientPrintFilter(IRecipientFilter& filter, int destination, const char* msg, ...);
 
 // Just a wrapper class so we're able to insert the callback
 class CChatCommand
