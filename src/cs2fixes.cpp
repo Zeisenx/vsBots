@@ -462,6 +462,9 @@ void CS2Fixes::Hook_DispatchConCommand(ConCommandHandle cmdHandle, const CComman
 			}
 		}
 
+		if (pController && vsBots_OnSayText(pController, args[1]))
+			bGagged = true;
+
 		if (!bGagged && !bSilent && !bFlooding)
 		{
 			SH_CALL(g_pCVar, &ICvar::DispatchConCommand)(cmdHandle, ctx, args);
@@ -490,6 +493,18 @@ void CS2Fixes::Hook_DispatchConCommand(ConCommandHandle cmdHandle, const CComman
 				else if (i == iCommandPlayerSlot.Get()) // Sender is not an admin
 					ClientPrint(pController, HUD_PRINTTALK, " \4(TO ADMINS) %s:\1 %s", pController->GetPlayerName(), pszMessage);
 			}
+		}
+
+		if (pController && V_strncmp(args[1], "buy ", 4) == 0)
+		{
+			CCommand newArgs;
+			newArgs.Tokenize((char*)(args.ArgS() + 4));
+			std::string name = newArgs[0];
+
+			for (int i = 0; name[i]; i++)
+				name[i] = tolower(name[i]);
+
+			ParseWeaponCommand(newArgs, pController);
 		}
 
 		// Finally, run the chat command if it is one, so anything will print after the player's message

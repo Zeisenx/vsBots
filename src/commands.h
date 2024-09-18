@@ -103,10 +103,11 @@ struct WeaponMapEntry_t
 	int iPrice;
 	uint16 iItemDefIndex;
 	gear_slot_t iGearSlot;
-	int maxAmount = 0;
+	int maxAmount = 5;
 };
 
 void RegisterWeaponCommands();
+void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player);
 void ParseChatCommand(const char *, CCSPlayerController *);
 
 #define CON_COMMAND_CHAT_FLAGS(name, description, flags)																						\

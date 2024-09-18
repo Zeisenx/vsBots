@@ -47,6 +47,7 @@ void ZDatabase::OnConnected(bool connect)
 		return;
 	}
 
+	ConMsg("[CS2Fixes DB] Connected to DB\n");
 	pConnection->Query("set names utf8mb4", [](ISQLQuery* test){});
 	VSBots::OnDBConnected();
 }

@@ -34,6 +34,7 @@ struct DBInfo
 	int iKills;
 	int iBossKills;
 	int iPoint;
+	int iWinPoint;
 	bool bDataLoaded;
 };
 

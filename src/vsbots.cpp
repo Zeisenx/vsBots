@@ -67,6 +67,7 @@ FAKE_BOOL_CVAR(vsbots_player_glow, "Player Glow", g_bPlayerGlowEnabled, false, f
 
 KeyValues* g_pKVPrintText;
 
+int GetPlayerRating(CCSPlayerController* pController);
 void RestrictWeapons(CCSPlayerPawn* pPawn);
 void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex);
 void LoadPrintTextKV();
@@ -74,6 +75,7 @@ void DuplicateSpawnPoint(int team, int maxCount);
 void AddHumanBots();
 void SetHumanHealth();
 void EmitSoundToAll(const char* szPath, float volume = 1.0f);
+void vsBots_OnSayTextPost(CCSPlayerController* pAuthor, const char* pText);
 
 void vsBots_OnLevelInit(char const* pMapName)
 {
@@ -272,10 +274,17 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 			continue;
 
 		CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
-		if (!pPawn || !pPawn->IsAlive())
+		if (!pPawn)
 			continue;
 
 		RestrictWeapons(pPawn);
+
+		if (!pController->IsBot() && pPawn->m_iTeamNum == winner)
+		{
+			DBInfo info = pController->GetZEPlayer()->GetDBInfo();
+			info.iWinPoint += oldLevel;
+			pController->GetZEPlayer()->SetDBInfo(info);
+		}
 	}
 
 }
@@ -350,7 +359,11 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		{
 			int health = MAX(100, g_iDifficulty == 0 ? 999 : (500 - 50 * (g_iDifficulty - 1)));
 			SetHumanHealth();
-			pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
+
+			if (!g_pGameRules->m_bWarmupPeriod)
+				pPawn->m_pItemServices->GiveNamedItem("weapon_healthshot");
+
+			RestrictWeapons(pPawn);
 
 			ZEPlayer* pPlayerTarget = pController->GetZEPlayer();
 			if (g_bPlayerGlowEnabled && !pPlayerTarget->GetGlowModel())
@@ -369,15 +382,6 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 				pBotProfile->m_reactionTime = 0.0f;
 				pBotProfile->m_attackDelay = 0.0f;
 			}
-		}
-
-		if (!pController->IsBot())
-		{
-			CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
-
-			RestrictWeapons(pPawn);
-
-			return -1.0f;
 		}
 
 		if (!pBot)
@@ -920,7 +924,7 @@ void vsBots_OnEntitySpawned(CEntityInstance* pEntity)
 
 	// Todo : move to config
 	WeaponVDataMap_t WeaponMap[] = {
-		{ITEMDEFINDEX_DEAGLE, 10, 40, 600},
+		{ITEMDEFINDEX_DEAGLE, -1, -1, 400},
 		{ITEMDEFINDEX_CZ75A, -1, 60, 300},
 		{ITEMDEFINDEX_REVOLVER, -1, 32, -1},
 		{ITEMDEFINDEX_USP_SILENCER, -1, 48, -1},
@@ -950,6 +954,15 @@ void vsBots_OnEntitySpawned(CEntityInstance* pEntity)
 		if (WeaponMap[i].killAward != -1)
 			pVData->m_nKillAward = WeaponMap[i].killAward;
 	}
+}
+
+int GetPlayerRating(CCSPlayerController* pController)
+{
+	DBInfo info = pController->GetZEPlayer()->GetDBInfo();
+	if (!info.bDataLoaded)
+		return 0;
+
+	return info.iKills + info.iBossKills * 10 + info.iWinPoint / 2;
 }
 
 void vsBots_OnTick()
@@ -1028,6 +1041,7 @@ void VSBots::OnAuthenticated(ZEPlayer* pPlayer)
 			info.iKills = 0;
 			info.iBossKills = 0;
 			info.iPoint = 0;
+			info.iWinPoint = 0;
 
 			ISQLResult *results = query->GetResultSet();
 			if (results->FetchRow())
@@ -1035,6 +1049,7 @@ void VSBots::OnAuthenticated(ZEPlayer* pPlayer)
 				info.iKills = results->GetInt(0);
 				info.iBossKills = results->GetInt(1);
 				info.iPoint = results->GetInt(2);
+				info.iWinPoint = results->GetInt(3);
 			}
 
 			pPlayer->SetDBInfo(info);
@@ -1046,18 +1061,58 @@ void VSBots::OnClientDisconnect(CPlayerSlot slot)
 	SaveDB();
 }
 
-bool VSBots::OnSayText(CCSPlayerController* pAuthor, const char* pText, IRecipientFilter& filter)
+
+bool vsBots_OnSayText(CCSPlayerController* pAuthor, const char* pText)
 {
+	if (pText[0] == '\0')
+		return true;
+
 	DBInfo info = pAuthor->GetZEPlayer()->GetDBInfo();
 	int level = 1 + (info.iKills + info.iBossKills * 10) / 100;
 
 	const char* pColorTag = pAuthor->m_iTeamNum == CS_TEAM_T ? "\x09" : "\x0C";
 
-	ClientPrintFilter(filter, HUD_PRINTTALK, "\x01 \x04[Lv.%d]%s %s :\x01 %s", level, pColorTag, pAuthor->GetPlayerName(), pText);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Lv.%d]%s %s :\x01 %s", level, pColorTag, pAuthor->GetPlayerName(), pText);
 
-	return false;
+	vsBots_OnSayTextPost(pAuthor, pText);
+
+	return true;
 }
 
+void vsBots_OnSayTextPost(CCSPlayerController* pController, const char* pText)
+{
+	if (V_stricmp(pText, "!rank") == 0)
+	{
+		ZEPlayer *pPlayer = pController->GetZEPlayer();
+		DBInfo dbInfo = pPlayer->GetDBInfo();
+		if (!dbInfo.bDataLoaded)
+			return;
+
+		char query[1024];
+		V_snprintf(query, sizeof(query), mysql_players_rank,
+			dbInfo.iKills + dbInfo.iBossKills * 10, pPlayer->GetSteamId64(), pPlayer->GetSteamId64());
+
+		CHandle<CBasePlayerController> hController = pController->GetHandle();
+		ZDatabase::GetConnection()->Query(query, [hController, dbInfo](ISQLQuery* query)
+		{
+			CCSPlayerController* pController = (CCSPlayerController*)hController.Get();
+			if (!pController)
+				return;
+
+			auto results = query->GetResultSet();
+			if (results->FetchRow())
+			{
+				int playerCnt = results->GetInt(0);
+				int rank = 1 + results->GetInt(1);
+
+				ClientPrintAll(HUD_PRINTTALK, " \x04[Rank - %s]\x01 봇 킬수 : %d", pController->GetPlayerName(), dbInfo.iKills);
+				ClientPrintAll(HUD_PRINTTALK, " \x04[Rank - %s]\x01 보스 킬수 : %d", pController->GetPlayerName(), dbInfo.iBossKills);
+				ClientPrintAll(HUD_PRINTTALK, " \x04[Rank - %s]\x01 랭킹 %d/%d",
+					pController->GetPlayerName(), rank, playerCnt);
+			}
+		});
+	}
+}
 
 CON_COMMAND_CHAT_FLAGS(savedb, "Save DB", ADMFLAG_GENERIC)
 {
@@ -1085,7 +1140,8 @@ void VSBots::SaveDB()
 			continue;
 		
 		std::string escapedName = ZDatabase::GetConnection()->Escape(pController->GetPlayerName());
-		V_snprintf(query, sizeof(query), mysql_players_upsert, pPlayer->GetSteamId64(), escapedName.c_str(), dbInfo.iKills, dbInfo.iBossKills, dbInfo.iPoint);
+		V_snprintf(query, sizeof(query), mysql_players_upsert,
+			pPlayer->GetSteamId64(), escapedName.c_str(), dbInfo.iKills, dbInfo.iBossKills, dbInfo.iPoint, dbInfo.iWinPoint);
 		txn.queries.push_back(query);
 	}
 

@@ -31,22 +31,29 @@ constexpr char mysql_players_create[] = R"(
         Kills INTEGER NOT NULL DEFAULT 0, 
         BossKills INTEGER NOT NULL DEFAULT 0, 
         Point INTEGER NOT NULL DEFAULT 0, 
+        WinPoint INTEGER NOT NULL DEFAULT 0, 
         Created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, 
         PRIMARY KEY(SteamID64)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 )";
 
 constexpr char mysql_players_select[] = R"(
-    SELECT Kills, BossKills, Point
+    SELECT Kills, BossKills, Point, WinPoint
         FROM players
     WHERE SteamID64 = %lld
 )";
 
 constexpr char mysql_players_upsert[] = R"(
-    INSERT INTO players (SteamID64, Name, Kills, BossKills, Point)
-            VALUES (%lld, '%s', %d, %d, %d)
+    INSERT INTO players (SteamID64, Name, Kills, BossKills, Point, WinPoint)
+            VALUES (%lld, '%s', %d, %d, %d, %d)
             ON DUPLICATE KEY UPDATE
             SteamID64=VALUES(SteamID64), Name=VALUES(Name),
-            Kills=VALUES(Kills), BossKills=VALUES(BossKills), Point=VALUES(Point)
+            Kills=VALUES(Kills), BossKills=VALUES(BossKills), Point=VALUES(Point), WinPoint=VALUES(WinPoint)
+)";
+
+constexpr char mysql_players_rank[] = R"(
+    SELECT (SELECT COUNT(SteamID64) FROM players), 
+    (SELECT COUNT(SteamID64) FROM players WHERE Kills + BossKills * 10>%d AND SteamID64 != %lld) 
+    FROM players WHERE SteamID64=%lld
 )";
 
 class VSBots
@@ -55,7 +62,6 @@ public:
     static void OnDBConnected();
     static void OnAuthenticated(ZEPlayer* pPlayer);
     static void OnClientDisconnect(CPlayerSlot slot);
-    static bool OnSayText(CCSPlayerController* pAuthor, const char *pText, IRecipientFilter& filter);
     static void SaveDB();
 };
 
@@ -76,6 +82,7 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis);
 void vsBots_Detour_ProcessUsercmds(CCSPlayerController* pController, CUserCmd* cmds, int numcmds, bool paused, float margin);
 void vsBots_Detour_BotProfileManager_InitPost(BotProfileManager* botProfileManager, const char* filename, unsigned int* checksum);
 void vsBots_OnEntitySpawned(CEntityInstance* pEntity);
+bool vsBots_OnSayText(CCSPlayerController* pAuthor, const char* pText);
 void vsBots_LoadBotNames();
 void vsBots_OnGameEnd();
 void vsBots_OnTick();

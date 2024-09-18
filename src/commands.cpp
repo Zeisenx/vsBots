@@ -31,6 +31,7 @@
 #include "entity/cbasemodelentity.h"
 #include "entity/ccsweaponbase.h"
 #include "entity/cparticlesystem.h"
+#include "entity/cgamerules.h"
 #include "entity/lights.h"
 #include "playermanager.h"
 #include "adminsystem.h"
@@ -52,6 +53,7 @@ extern IGameEventSystem *g_gameEventSystem;
 extern CGameEntitySystem *g_pEntitySystem;
 extern IVEngineServer2* g_pEngineServer2;
 extern ISteamHTTP* g_http;
+extern CCSGameRules* g_pGameRules;
 
 bool g_bEnableCommands;
 bool g_bEnableAdminCommands;
@@ -118,7 +120,7 @@ int GetTeamFromWeaponName(const char* pszClassname)
 		V_strcmp(pszWeaponName, "mac10") == 0 ||
 		V_strcmp(pszWeaponName, "galilar") == 0 ||
 		V_strcmp(pszWeaponName, "ak47") == 0 ||
-		V_strcmp(pszWeaponName, "sg553") == 0 ||
+		V_strcmp(pszWeaponName, "sg556") == 0 ||
 		V_strcmp(pszWeaponName, "g3sg1") == 0)
 		return CS_TEAM_T;
 
@@ -159,6 +161,9 @@ void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 		if (!V_strncmp("c_", command, 2))
 			command = command + 2;
 
+		if (!V_strncmp("buy ", command, 4))
+			command = command + 4;
+
 		for (std::string alias : weaponEntry.aliases)
 		{
 			if (!V_stricmp(command, alias.c_str()))
@@ -181,6 +186,12 @@ void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 	if (g_bEnableZR && pPawn->m_iTeamNum != CS_TEAM_CT)
 	{
 		ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX"You can only buy weapons when human.");
+		return;
+	}
+
+	if (g_pGameRules->m_bWarmupPeriod)
+	{
+		ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX"You can't buy weapons when warmup.");
 		return;
 	}
 
@@ -350,29 +361,6 @@ void ClientPrintAll(int hud_dest, const char *msg, ...)
 
 	CRecipientFilter filter;
 	filter.AddAllPlayers();
-
-	g_gameEventSystem->PostEventAbstract(-1, false, &filter, pNetMsg, data, 0);
-
-	delete data;
-
-	ConMsg("%s\n", buf);
-}
-
-void ClientPrintFilter(IRecipientFilter& filter, int hud_dest, const char* msg, ...)
-{
-	va_list args;
-	va_start(args, msg);
-
-	char buf[256];
-	V_vsnprintf(buf, sizeof(buf), msg, args);
-
-	va_end(args);
-
-	INetworkMessageInternal* pNetMsg = g_pNetworkMessages->FindNetworkMessagePartial("TextMsg");
-	auto data = pNetMsg->AllocateMessage()->ToPB<CUserMessageTextMsg>();
-
-	data->set_dest(hud_dest);
-	data->add_param(buf);
 
 	g_gameEventSystem->PostEventAbstract(-1, false, &filter, pNetMsg, data, 0);
 
