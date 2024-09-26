@@ -238,6 +238,11 @@ public:
 
 		return addresses::CBaseEntity_EmitSoundFilter(filter, entindex(), params);
 	}
+	
+	void StopSound(const char* pszSound)
+	{
+		addresses::CBaseEntity_StopSound(this, pszSound);
+	}
 
 	void DispatchParticle(const char *pszParticleName, IRecipientFilter *pFilter, ParticleAttachment_t nAttachType = PATTACH_POINT_FOLLOW, 
 		char iAttachmentPoint = 0, CUtlSymbolLarge iAttachmentName = "")

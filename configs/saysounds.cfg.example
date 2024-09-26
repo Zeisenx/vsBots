@@ -1,0 +1,15 @@
+"SaySounds"
+{
+    "a"
+    {
+        "sound_trigger" "saysounds.a"
+    }
+    "b"
+    {
+        "sound_trigger" "saysounds.c"
+    }
+    "c"
+    {
+        "sound_trigger" "saysounds.c"
+    }
+}

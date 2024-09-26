@@ -49,6 +49,7 @@
 #include "map_votes.h"
 #include "tier0/vprof.h"
 #include "vsbots.h"
+#include "utils/entity.h"
 
 #include "tier0/memdbgon.h"
 
@@ -81,6 +82,7 @@ DECLARE_DETOUR(CGamePlayerEquip_InputTriggerForAllPlayers, Detour_CGamePlayerEqu
 DECLARE_DETOUR(CGamePlayerEquip_InputTriggerForActivatedPlayer, Detour_CGamePlayerEquip_InputTriggerForActivatedPlayer);
 DECLARE_DETOUR(GetFreeClient, Detour_GetFreeClient);
 DECLARE_DETOUR(CCSPlayerPawn_GetMaxSpeed, Detour_CCSPlayerPawn_GetMaxSpeed);
+DECLARE_DETOUR(CCSPlayer_WeaponServices_HandleDropWeapon, Detour_CCSPlayer_WeaponServices_HandleDropWeapon);
 
 static bool g_bBlockMolotovSelfDmg = false;
 static bool g_bBlockAllDamage = false;
@@ -555,11 +557,6 @@ void FASTCALL Detour_BotProfileManager_Init(BotProfileManager* botProfileManager
 
 Vector& FASTCALL Detour_CCSBot_GetPartPosition(CCSBot* pBot, CCSPlayerPawn* pPlayer, unsigned int part)
 {
-	// Makes gut to head. This is temporary solution, 
-	// Should detour CCSBot::PickNewAimSpot, and changes m_targetSpot vector to player head in future design
-	//if (part == 1 && vsBots_IsBotHeadOnly(pBot))
-	//	part = 2;
-
 	Vector pos = CCSBot_GetPartPosition(pBot, pPlayer, part);
 	return pos;
 }
@@ -573,10 +570,12 @@ void FASTCALL Detour_CCSBot_PickNewAimSpot(CCSBot* pBot)
 	{
 		float skill = pBot->GetLocalProfile()->m_skill;
 		const float sharpShooter = 0.8f;
-		if (skill >= sharpShooter && pBot->m_visibleEnemyParts & HEAD)
-			pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, HEAD);
-		else
-			pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, GUT);
+		
+		VisiblePartType aimPartType = skill >= sharpShooter && pBot->m_visibleEnemyParts & HEAD ? HEAD : GUT;
+		if (aimPartType == GUT && !pBot->m_visibleEnemyParts & GUT && pBot->m_visibleEnemyParts & HEAD)
+			aimPartType = HEAD;
+
+		pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, aimPartType);
 	}
 }
 
@@ -602,16 +601,58 @@ void FASTCALL Detour_CCSPlayerPawn_ClientCommand(CCSPlayerPawn *pPawn, const CCo
 	CCSPlayerController* pController = pPawn->GetOriginalController();
 	if (pController && pController->IsBot() && !V_strncmp(args.Arg(0), "buy", 3) && !V_strncmp(args.Arg(1), "m4a1", 4))
 	{
-		if (pController->m_pInGameMoneyServices->m_iAccount >= 3100)
+		const int weaponPrice = 3000;
+		if (pController->m_pInGameMoneyServices->m_iAccount >= weaponPrice)
 		{
 			CCSPlayerPawn* pPawn = pController->GetPlayerPawn();
 			if (pPawn)
 			{
 				pPawn->m_pItemServices->GiveNamedItem(rand() % 2 == 0 ? "weapon_m4a1" : "weapon_m4a1_silencer");
-				pController->m_pInGameMoneyServices->m_iAccount -= 3100;
+				pController->m_pInGameMoneyServices->m_iAccount -= weaponPrice;
 			}
 		}
 	}
+}
+
+bool FASTCALL Detour_CCSPlayer_WeaponServices_HandleDropWeapon(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pWeapon, bool bSwapping)
+{
+	// fuck you cs2
+	//CBasePlayerWeapon* pCSWeapon = pWeapon ? pWeapon : (CBasePlayerWeapon*)pWeaponServices->m_hActiveWeapon.Get();
+	//if (V_strcmp(pCSWeapon->GetClassname(), "weapon_healthshot") == 0)
+	//{
+	//	CCSPlayerPawn* pPawn = pWeaponServices->GetPawn();
+	//	Vector vecWeaponThrowFromPos = pPawn->GetAbsOrigin();
+	//	vecWeaponThrowFromPos.z += pPawn->m_vecViewOffset().m_vecZ;
+
+	//	QAngle angWeaponThrowFromAngle = pPawn->m_angEyeAngles;
+
+	//	Vector vForward;
+	//	AngleVectors(angWeaponThrowFromAngle, &vForward, NULL, NULL);
+	//	vecWeaponThrowFromPos = vecWeaponThrowFromPos + (vForward * 100);
+
+	//	pWeaponServices->DropWeapon(pCSWeapon, &vForward, &vForward);
+	//	CCSWeaponBase* pHealth = CreateEntityByName<CCSWeaponBase>("weapon_healthshot");
+	//	if (pHealth)
+	//	{
+	//		int ammoType = pHealth->GetWeaponVData()->m_nPrimaryAmmoType;
+	//		if (false)
+	//		{
+	//			pHealth->m_pCollision->m_usSolidFlags = FSOLID_NOT_STANDABLE | FSOLID_TRIGGER | FSOLID_USE_TRIGGER_BOUNDS;
+	//			pHealth->m_MoveCollide = MOVECOLLIDE_FLY_BOUNCE;
+	//			pHealth->m_hPrevOwner = pPawn;
+	//			pHealth->m_flDroppedAtTime().m_Value = gpGlobals->curtime;
+
+	//			pHealth->DispatchSpawn();
+	//			pHealth->Teleport(&vecWeaponThrowFromPos, nullptr, &vForward);
+	//		}
+	//		else
+	//		{
+	//		}
+	//	}
+	//	return true;
+	//}
+
+	return CCSPlayer_WeaponServices_HandleDropWeapon(pWeaponServices, pWeapon, bSwapping);
 }
 
 float FASTCALL Detour_CCSPlayerPawn_GetMaxSpeed(CCSPlayerPawn* pPawn)

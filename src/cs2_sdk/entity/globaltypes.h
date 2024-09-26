@@ -182,6 +182,16 @@ public:
 	DECLARE_SCHEMA_CLASS_INLINE(CNetworkTransmitComponent)
 };
 
+class CNetworkViewOffsetVector
+{
+public:
+	DECLARE_SCHEMA_CLASS_INLINE(CNetworkViewOffsetVector)
+
+	float m_vecX;
+	float m_vecY;
+	float m_vecZ;
+};
+
 class CNetworkVelocityVector
 {
 public:

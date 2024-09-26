@@ -119,6 +119,8 @@ public:
 
 	SCHEMA_FIELD_POINTER(CUtlVector<CHandle<CBasePlayerWeapon>>, m_hMyWeapons)
 	SCHEMA_FIELD(CHandle<CBasePlayerWeapon>, m_hActiveWeapon)
+
+	SCHEMA_FIELD_POINTER(uint16_t, m_iAmmo)
 };
 
 class CCSPlayer_WeaponServices : public CPlayer_WeaponServices

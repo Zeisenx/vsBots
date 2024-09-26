@@ -215,6 +215,7 @@ public:
     SCHEMA_FIELD(bool, m_isEnemyVisible)
     SCHEMA_FIELD(uint8_t, m_visibleEnemyParts)
     SCHEMA_FIELD(float, m_lastSawEnemyTimestamp)
+    SCHEMA_FIELD(GameTime_t, m_fireWeaponTimestamp)
 
     BotProfile* GetLocalProfile()
     {

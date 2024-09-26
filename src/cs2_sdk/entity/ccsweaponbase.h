@@ -72,6 +72,7 @@ class CBasePlayerWeaponVData : public CEntitySubclassVDataBase
 public:
 	DECLARE_SCHEMA_CLASS(CBasePlayerWeaponVData)
 	SCHEMA_FIELD(int, m_iMaxClip1)
+	SCHEMA_FIELD(int8_t, m_nPrimaryAmmoType)
 };
 
 class CCSWeaponBaseVData : public CBasePlayerWeaponVData
@@ -82,7 +83,7 @@ public:
 	SCHEMA_FIELD(gear_slot_t, m_GearSlot)
 	SCHEMA_FIELD(int, m_nPrice)
 	SCHEMA_FIELD(int, m_nKillAward)
-	SCHEMA_FIELD(int, m_nPrimaryReserveAmmoMax);
+	SCHEMA_FIELD(int, m_nPrimaryReserveAmmoMax)
 };
 
 class CBasePlayerWeapon : public CEconEntity
@@ -99,4 +100,6 @@ class CCSWeaponBase : public CBasePlayerWeapon
 public:
 	DECLARE_SCHEMA_CLASS(CCSWeaponBase)
 	SCHEMA_FIELD(float, m_fAccuracyPenalty)
+	SCHEMA_FIELD(GameTime_t, m_flDroppedAtTime)
+	SCHEMA_FIELD(CHandle<CCSPlayerPawn>, m_hPrevOwner)
 };

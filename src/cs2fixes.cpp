@@ -62,6 +62,7 @@
 #include "gameevents.pb.h"
 #include "leader.h"
 #include "database.h"
+#include "saysound.h"
 
 #include "tier0/memdbgon.h"
 
@@ -462,7 +463,10 @@ void CS2Fixes::Hook_DispatchConCommand(ConCommandHandle cmdHandle, const CComman
 			}
 		}
 
-		if (pController && vsBots_OnSayText(pController, args[1]))
+		if (pController && !bGagged && SaySound_OnChat(pController, args[1]))
+			bGagged = true;
+
+		if (pController && !bGagged && vsBots_OnSayText(pController, args[1]))
 			bGagged = true;
 
 		if (!bGagged && !bSilent && !bFlooding)
@@ -548,6 +552,7 @@ void CS2Fixes::Hook_StartupServer(const GameSessionConfiguration_t& config, ISou
 
 	g_pPanoramaVoteHandler->Reset();
 	VoteManager_Init();
+	SaySound_Init();
 
 	g_pIdleSystem->Reset();
 }

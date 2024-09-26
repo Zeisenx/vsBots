@@ -35,6 +35,8 @@ struct DBInfo
 	int iBossKills;
 	int iPoint;
 	int iWinPoint;
+	int iAssists;
+	int iBossAssists;
 	bool bDataLoaded;
 };
 
@@ -135,6 +137,9 @@ public:
 		m_dbInfo.iKills = 0;
 		m_dbInfo.iBossKills = 0;
 		m_dbInfo.iPoint = 0;
+		m_dbInfo.iWinPoint = 0;
+		m_dbInfo.iAssists = 0;
+		m_dbInfo.iBossAssists = 0;
 	}
 
 	~ZEPlayer()
@@ -190,7 +195,13 @@ public:
 	void UpdateLastInputTime() { m_iLastInputTime = std::time(0); }
 	void SetMaxSpeed(float flMaxSpeed) { m_flMaxSpeed = flMaxSpeed; }
 	void ReplicateConVar(const char* pszName, const char* pszValue);
-	void SetDBInfo(DBInfo info) { m_dbInfo = info; }
+	void SetDBInfo(DBInfo info)
+	{
+		if (!info.bDataLoaded)
+			return;
+
+		m_dbInfo = info;
+	}
 
 	bool IsMuted() { return m_bMuted; }
 	bool IsGagged() { return m_bGagged; }
