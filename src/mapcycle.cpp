@@ -25,7 +25,7 @@ CUtlVector<string> g_mapList;
 extern IVEngineServer2* g_pEngineServer2;
 
 void ChangeLevel(string mapName);
-void LoadMapCycle(bool force);
+void LoadMapCycle(bool force=false);
 string GetMapName(string mapName);
 
 CON_COMMAND_F(cs2f_mapcycle_reload, "Reload Mapcycle", FCVAR_LINKED_CONCOMMAND | FCVAR_SPONLY | FCVAR_PROTECTED)
@@ -66,7 +66,7 @@ void MapCycle_OnLevelInit(const char* mapName)
 	LoadMapCycle();
 }
 
-void LoadMapCycle(bool force = false)
+void LoadMapCycle(bool force)
 {
 	const bool firstLoad = g_mapList.Count() == 0;
 	
