@@ -118,7 +118,7 @@ string GetMapName(string mapName)
 			return mapName;
 		}
 
-		return pPublishDataKV->GetString("source_folder");
+		return pPublishDataKV->GetString("title");
 	}
 
 	return mapName;
@@ -128,9 +128,10 @@ void MapCycle_OnGameEnd()
 {
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Next Map]\x01 %s", GetMapName(g_mapList[g_mapListIndex].c_str()));
 
-	new CTimer(g_mapChangeTime, false, false, []()
+	int mapIndex = g_mapListIndex;
+	new CTimer(g_mapChangeTime, false, false, [mapIndex]()
 	{
-		const char* nextMapName = g_forceNextMap.size() == 0 ? g_mapList[g_mapListIndex].c_str() : g_forceNextMap.c_str();
+		const char* nextMapName = g_forceNextMap.size() == 0 ? g_mapList[mapIndex].c_str() : g_forceNextMap.c_str();
 
 		ChangeLevel(nextMapName);
 		return -1.0f;

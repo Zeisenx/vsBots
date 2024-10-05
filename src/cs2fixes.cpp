@@ -463,10 +463,10 @@ void CS2Fixes::Hook_DispatchConCommand(ConCommandHandle cmdHandle, const CComman
 			}
 		}
 
-		if (pController && !bGagged && SaySound_OnChat(pController, args[1]))
+		if (pController && !bGagged && !bFlooding && SaySound_OnChat(pController, args[1]))
 			bGagged = true;
 
-		if (pController && !bGagged && vsBots_OnSayText(pController, args[1]))
+		if (pController && !bGagged && !bFlooding && vsBots_OnSayText(pController, args[1]))
 			bGagged = true;
 
 		if (!bGagged && !bSilent && !bFlooding)
