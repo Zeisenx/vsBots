@@ -39,10 +39,24 @@ struct DBInfo
 	int iBossAssists;
 	bool bDataLoaded;
 };
+#define NO_TARGET_BLOCKS		(0)
+#define NO_RANDOM				(1 << 1)
+#define NO_MULTIPLE 			(1 << 2)
+#define NO_SELF					(1 << 3)
+#define NO_BOT					(1 << 4)
+#define NO_HUMAN				(1 << 5)
+#define NO_UNAUTHENTICATED		(1 << 6)
+#define NO_DEAD					(1 << 7)
+#define NO_ALIVE				(1 << 8)
+#define NO_TERRORIST			(1 << 9)
+#define NO_COUNTER_TERRORIST	(1 << 10)
+#define NO_SPECTATOR			(1 << 11)
+#define NO_IMMUNITY				(1 << 12)
 
 #define DECAL_PREF_KEY_NAME "hide_decals"
 #define HIDE_DISTANCE_PREF_KEY_NAME "hide_distance"
 #define SOUND_STATUS_PREF_KEY_NAME "sound_status"
+#define NO_SHAKE_PREF_KEY_NAME "no_shake"
 #define INVALID_ZEPLAYERHANDLE_INDEX 0u
 
 static uint32 iZEPlayerHandleSerial = 0u; // this should actually be 3 bytes large, but no way enough players join in servers lifespan for this to be an issue
@@ -54,10 +68,45 @@ enum class ETargetType {
 	RANDOM,
 	RANDOM_T,
 	RANDOM_CT,
+	RANDOM_SPEC,
+	AIM,
 	ALL,
 	SPECTATOR,
 	T,
 	CT,
+	DEAD,
+	ALIVE,
+	BOT,
+	HUMAN,
+	ALL_BUT_SELF,
+	ALL_BUT_RANDOM,
+	ALL_BUT_RANDOM_T,
+	ALL_BUT_RANDOM_CT,
+	ALL_BUT_RANDOM_SPEC,
+	ALL_BUT_AIM,
+	ALL_BUT_SPECTATOR,
+	ALL_BUT_T,
+	ALL_BUT_CT
+};
+
+enum class ETargetError
+{
+	NO_ERRORS,
+	INVALID,
+	CONNECTING,
+	MULTIPLE_NAME_MATCHES,
+	RANDOM,
+	MULTIPLE,
+	SELF,
+	BOT,
+	HUMAN,
+	UNAUTHENTICATED,
+	INSUFFICIENT_IMMUNITY_LEVEL,
+	DEAD,
+	ALIVE,
+	TERRORIST,
+	COUNTER_TERRORIST,
+	SPECTATOR
 };
 
 class ZEPlayer;
@@ -106,6 +155,7 @@ public:
 	{ 
 		m_bAuthenticated = false;
 		m_iAdminFlags = 0;
+		m_iAdminImmunity = 0;
 		m_SteamID = nullptr;
 		m_bGagged = false;
 		m_bMuted = false;
@@ -163,8 +213,8 @@ public:
 	void SetConnected() { m_bConnected = true; }
 	void SetUnauthenticatedSteamId(const CSteamID* steamID) { m_UnauthenticatedSteamID = steamID; }
 	void SetSteamId(const CSteamID* steamID) { m_SteamID = steamID; }
-	uint64 GetAdminFlags() { return m_iAdminFlags; }
 	void SetAdminFlags(uint64 iAdminFlags) { m_iAdminFlags = iAdminFlags; }
+	void SetAdminImmunity(int iAdminImmunity) { m_iAdminImmunity = iAdminImmunity; }
 	void SetPlayerSlot(CPlayerSlot slot) { m_slot = slot; }
 	void SetMuted(bool muted) { m_bMuted = muted; }
 	void SetGagged(bool gagged) { m_bGagged = gagged; }
@@ -203,6 +253,8 @@ public:
 		m_dbInfo = info;
 	}
 
+	uint64 GetAdminFlags() { return m_iAdminFlags; }
+	int GetAdminImmunity() { return m_iAdminImmunity; }
 	bool IsMuted() { return m_bMuted; }
 	bool IsGagged() { return m_bGagged; }
 	bool ShouldBlockTransmit(int index) { return m_shouldTransmit.Get(index); }
@@ -260,6 +312,7 @@ private:
 	bool m_bMuted;
 	bool m_bGagged;
 	uint64 m_iAdminFlags;
+	int m_iAdminImmunity;
 	int m_iHideDistance;
 	CBitVec<MAXPLAYERS> m_shouldTransmit;
 	int m_iTotalDamage;
@@ -301,6 +354,7 @@ public:
 		m_nUsingStopSound = -1; // On by default
 		m_nUsingSilenceSound = 0;
 		m_nUsingStopDecals = -1; // On by default
+		m_nUsingNoShake = 0;
 
 		if (late)
 			OnLateLoad();
@@ -319,23 +373,30 @@ public:
 	CPlayerSlot GetSlotFromUserId(uint16 userid);
 	ZEPlayer *GetPlayerFromUserId(uint16 userid);
 	ZEPlayer *GetPlayerFromSteamId(uint64 steamid);
-	ETargetType TargetPlayerString(int iCommandClient, const char* target, int &iNumClients, int *clients);
+	ETargetError GetPlayersFromString(CCSPlayerController* pPlayer, const char* pszTarget, int &iNumClients, int *clients, uint64 iBlockedFlags = NO_TARGET_BLOCKS);
+	ETargetError GetPlayersFromString(CCSPlayerController* pPlayer, const char* pszTarget, int &iNumClients, int *clients, uint64 iBlockedFlags, ETargetType& nType);
+	static std::string GetErrorString(ETargetError eType, int iSlot = 0);
+	bool CanTargetPlayers(CCSPlayerController* pPlayer, const char* pszTarget, int& iNumClients, int* clients, uint64 iBlockedFlags = NO_TARGET_BLOCKS);
+	bool CanTargetPlayers(CCSPlayerController* pPlayer, const char* pszTarget, int& iNumClients, int* clients, uint64 iBlockedFlags, ETargetType& nType);
 
 	ZEPlayer *GetPlayer(CPlayerSlot slot);
 
 	uint64 GetStopSoundMask() { return m_nUsingStopSound; }
 	uint64 GetSilenceSoundMask() { return m_nUsingSilenceSound; }
 	uint64 GetStopDecalsMask() { return m_nUsingStopDecals; }
+	uint64 GetNoShakeMask() { return m_nUsingNoShake; }
 	
 	void SetPlayerStopSound(int slot, bool set);
 	void SetPlayerSilenceSound(int slot, bool set);
 	void SetPlayerStopDecals(int slot, bool set);
+	void SetPlayerNoShake(int slot, bool set);
 
 	void ResetPlayerFlags(int slot);
 
 	bool IsPlayerUsingStopSound(int slot) { return m_nUsingStopSound & ((uint64)1 << slot); }
 	bool IsPlayerUsingSilenceSound(int slot) { return m_nUsingSilenceSound & ((uint64)1 << slot); }
 	bool IsPlayerUsingStopDecals(int slot) { return m_nUsingStopDecals & ((uint64)1 << slot); }
+	bool IsPlayerUsingNoShake(int slot) { return m_nUsingNoShake & ((uint64)1 << slot); }
 
 	void UpdatePlayerStates();
 
@@ -347,6 +408,7 @@ private:
 	uint64 m_nUsingStopSound;
 	uint64 m_nUsingSilenceSound;
 	uint64 m_nUsingStopDecals;
+	uint64 m_nUsingNoShake;
 };
 
 extern CPlayerManager *g_playerManager;
