@@ -80,14 +80,6 @@ public:
 	SCHEMA_FIELD(float, m_flMaxspeed)
 };
 
-class CPlayer_CameraServices : public CPlayerPawnComponent
-{
-public:
-	DECLARE_SCHEMA_CLASS(CPlayer_CameraServices);
-
-	SCHEMA_FIELD(QAngle, m_vecCsViewPunchAngle)
-};
-
 class CPlayer_MovementServices_Humanoid : public CPlayer_MovementServices
 {
 public:
@@ -236,3 +228,24 @@ public:
 	SCHEMA_FIELD(ObserverMode_t, m_iObserverLastMode)
 	SCHEMA_FIELD(bool, m_bForcedObserverMode)
 };
+
+class CPlayer_CameraServices
+{
+public:
+    DECLARE_SCHEMA_CLASS(CPlayer_CameraServices)
+
+    SCHEMA_FIELD(CHandle<CBaseEntity>, m_hViewEntity)
+		
+};
+
+class CCSPlayerBase_CameraServices : public CPlayer_CameraServices
+{
+public:
+    DECLARE_SCHEMA_CLASS(CCSPlayerBase_CameraServices)
+
+    SCHEMA_FIELD(CHandle<CBaseEntity>, m_hZoomOwner)
+    SCHEMA_FIELD(uint, m_iFOV)
+};
+
+class CCSPlayer_CameraServices : public CCSPlayerBase_CameraServices
+{};

@@ -110,6 +110,8 @@ enum class ETargetError
 };
 
 class ZEPlayer;
+struct ZRClass;
+struct ZRModelEntry;
 
 class ZEPlayerHandle
 {
@@ -190,6 +192,8 @@ public:
 		m_dbInfo.iWinPoint = 0;
 		m_dbInfo.iAssists = 0;
 		m_dbInfo.iBossAssists = 0;
+		m_pActiveZRClass = nullptr;
+		m_pActiveZRModel = nullptr;
 	}
 
 	~ZEPlayer()
@@ -252,6 +256,8 @@ public:
 
 		m_dbInfo = info;
 	}
+	void SetActiveZRClass(std::shared_ptr<ZRClass> pZRModel) { m_pActiveZRClass = pZRModel; }
+	void SetActiveZRModel(std::shared_ptr<ZRModelEntry> pZRClass) { m_pActiveZRModel = pZRClass; }
 
 	uint64 GetAdminFlags() { return m_iAdminFlags; }
 	int GetAdminImmunity() { return m_iAdminImmunity; }
@@ -288,6 +294,8 @@ public:
 	uint64 GetLastInputs() { return m_iLastInputs; }
 	std::time_t GetLastInputTime() { return m_iLastInputTime; }
 	DBInfo GetDBInfo() { return m_dbInfo; }
+	std::shared_ptr<ZRClass> GetActiveZRClass() { return m_pActiveZRClass; }
+	std::shared_ptr<ZRModelEntry> GetActiveZRModel() { return m_pActiveZRModel; }
 	
 	void OnSpawn();
 	void OnAuthenticated();
@@ -343,6 +351,8 @@ private:
 	uint64 m_iLastInputs;
 	std::time_t m_iLastInputTime;
 	DBInfo m_dbInfo;
+	std::shared_ptr<ZRClass> m_pActiveZRClass;
+	std::shared_ptr<ZRModelEntry> m_pActiveZRModel;
 };
 
 class CPlayerManager

@@ -70,4 +70,9 @@ public:
 	SCHEMA_FIELD(CCSBot*, m_pBot)
 	SCHEMA_FIELD(QAngle, m_aimPunchAngle)
 	SCHEMA_FIELD(QAngle, m_aimPunchAngleVel)
+
+	[[nodiscard]] CCSPlayer_CameraServices* GetCameraService()
+	{
+		return reinterpret_cast<CCSPlayer_CameraServices*>(m_pCameraServices());
+	}
 };

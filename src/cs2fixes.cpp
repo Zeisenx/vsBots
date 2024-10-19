@@ -137,7 +137,6 @@ CGameConfig *g_GameConfig = nullptr;
 ISteamHTTP *g_http = nullptr;
 CSteamGameServerAPIContext g_steamAPI;
 CCSGameRules *g_pGameRules = nullptr;
-IGameTypes* g_pGameTypes = nullptr;
 int g_iCGamePlayerEquipUseId = -1;
 int g_iCreateWorkshopMapGroupId = -1;
 int g_iOnTakeDamageAliveId = -1;
@@ -961,9 +960,13 @@ void CS2Fixes::Hook_CheckMovingGround(double frametime)
 {
 	CCSPlayer_MovementServices *pMove = META_IFACEPTR(CCSPlayer_MovementServices);
 	CCSPlayerPawn *pPawn = pMove->GetPawn();
+
+	if (!pPawn)
+		RETURN_META(MRES_IGNORED);
+
 	CCSPlayerController *pController = pPawn->GetOriginalController();
 
-	if (!pPawn || !pController)
+	if (!pController)
 		RETURN_META(MRES_IGNORED);
 
 	int iSlot = pController->GetPlayerSlot();
