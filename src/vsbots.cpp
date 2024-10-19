@@ -447,7 +447,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			pPawn->m_clrRender = Color(0, 0, 0, 255);
 			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_iDifficulty) - 1));
 
-			int health = 600 + g_iDifficulty * 650;
+			int health = 600 + g_iDifficulty * 400;
 			pPawn->m_iHealth = health;
 
 			pController->GetZEPlayer()->SetSpeedMod(1.0 + g_iDifficulty * 0.03);
@@ -511,10 +511,10 @@ bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo
 
 	if (pAttackerController->IsBot())
 	{
-		if (V_strcmp(pAttackerController->GetPlayerName(), "[Boss] Crusher", 14) == 0)
+		if (V_strcmp(pAttackerController->GetPlayerName(), "[Boss] Crusher") == 0)
 			inputInfo->m_flDamage *= 1.0f + g_iDifficulty;
 
-		if (V_strcmp(pAttackerController->GetPlayerName(), "[Boss] Stone", 12) == 0)
+		if (V_strcmp(pAttackerController->GetPlayerName(), "[Boss] Stone") == 0)
 			inputInfo->m_flDamage = 9999.0f;
 	}
 
@@ -624,7 +624,7 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 				pAttacker->GetPlayerName(), pVictim->GetPlayerName());
 			EmitSoundToAll("UI.ArmsRace.BecomeTeamLeader");
 
-			if (V_strncmp(pVictim->GetPlayerName(), "[Boss] Exp203", 14) == 0)
+			if (V_strcmp(pVictim->GetPlayerName(), "[Boss] Exp203") == 0)
 			{
 				auto origin = pVictimPawn->GetAbsOrigin();
 
@@ -857,12 +857,12 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 			if (!pWeapon)
 				return;
 
-			pBot->m_fireWeaponTimestamp().m_Value = 0.0f;
+			pBot->m_fireWeaponTimestamp().SetTime(0.0f);
 
 			pPawn->m_iShotsFired = 0;
 			if (g_iDifficulty >= 9)
 			{
-				pWeaponServices->m_flNextAttack().m_Value = 0.0;
+				pWeaponServices->m_flNextAttack().SetTime(0.0);
 				pWeapon->m_nNextPrimaryAttackTick = 1;
 				pWeapon->m_fAccuracyPenalty = 0.0;
 				pPawn->m_aimPunchAngle = QAngle(0, 0, 0);
@@ -883,7 +883,7 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 			pPawn->m_iShotsFired = 0;
 			float notSeenEnemyTime = gpGlobals->curtime - pBot->m_lastSawEnemyTimestamp;
 			if (notSeenEnemyTime <= 3.0f &&
-				gpGlobals->curtime >= pWeaponServices->m_flNextAttack().m_Value)
+				gpGlobals->curtime >= pWeaponServices->m_flNextAttack().GetTime())
 				pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
 
 			if (g_iDifficulty >= 10)
@@ -1066,36 +1066,38 @@ void VSBots::OnAuthenticated(ZEPlayer* pPlayer)
 	char query[1024];
 	V_snprintf(query, sizeof(query), mysql_players_select, pPlayer->GetSteamId64());
 
-	ZEPlayerHandle handle = pPlayer->GetHandle();
-	ZDatabase::GetConnection()->Query(query, [handle](ISQLQuery* query)
-		{
-			ZEPlayer* pPlayer = handle.Get();
-			if (!pPlayer)
-				return;
-
-			DBInfo info = { 0, 0, 0, 0, false };
-
-			ISQLResult *results = query->GetResultSet();
-			if (results->FetchRow())
+	if (ZDatabase::GetConnection())
+	{
+		ZEPlayerHandle handle = pPlayer->GetHandle();
+		ZDatabase::GetConnection()->Query(query, [handle](ISQLQuery* query)
 			{
-				info.iKills = results->GetInt(0);
-				info.iBossKills = results->GetInt(1);
-				info.iPoint = results->GetInt(2);
-				info.iWinPoint = results->GetInt(3);
-				info.iAssists = results->GetInt(4);
-				info.iBossAssists = results->GetInt(5);
-			}
-			info.bDataLoaded = true;
+				ZEPlayer* pPlayer = handle.Get();
+				if (!pPlayer)
+					return;
 
-			pPlayer->SetDBInfo(info);
-		});
+				DBInfo info = { 0, 0, 0, 0, false };
+
+				ISQLResult* results = query->GetResultSet();
+				if (results->FetchRow())
+				{
+					info.iKills = results->GetInt(0);
+					info.iBossKills = results->GetInt(1);
+					info.iPoint = results->GetInt(2);
+					info.iWinPoint = results->GetInt(3);
+					info.iAssists = results->GetInt(4);
+					info.iBossAssists = results->GetInt(5);
+				}
+				info.bDataLoaded = true;
+
+				pPlayer->SetDBInfo(info);
+			});
+	}
 }
 
 void VSBots::OnClientDisconnect(CPlayerSlot slot)
 {
 	SaveDB();
 }
-
 
 bool vsBots_OnSayText(CCSPlayerController* pAuthor, const char* pText)
 {
@@ -1116,7 +1118,7 @@ bool vsBots_OnSayText(CCSPlayerController* pAuthor, const char* pText)
 
 void vsBots_OnSayTextPost(CCSPlayerController* pController, const char* pText)
 {
-	if (V_stricmp(pText, "!rank") == 0)
+	if (V_stricmp(pText, "!rank") == 0 && ZDatabase::GetConnection())
 	{
 		ZEPlayer *pPlayer = pController->GetZEPlayer();
 		DBInfo dbInfo = pPlayer->GetDBInfo();
@@ -1156,6 +1158,9 @@ CON_COMMAND_CHAT_FLAGS(savedb, "Save DB", ADMFLAG_GENERIC)
 
 void VSBots::SaveDB()
 {
+	if (!ZDatabase::GetConnection())
+		return;
+
 	char query[1024];
 
 	Transaction txn;

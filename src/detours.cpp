@@ -82,7 +82,6 @@ DECLARE_DETOUR(CGamePlayerEquip_InputTriggerForAllPlayers, Detour_CGamePlayerEqu
 DECLARE_DETOUR(CGamePlayerEquip_InputTriggerForActivatedPlayer, Detour_CGamePlayerEquip_InputTriggerForActivatedPlayer);
 DECLARE_DETOUR(GetFreeClient, Detour_GetFreeClient);
 DECLARE_DETOUR(CCSPlayerPawn_GetMaxSpeed, Detour_CCSPlayerPawn_GetMaxSpeed);
-DECLARE_DETOUR(CCSPlayer_WeaponServices_HandleDropWeapon, Detour_CCSPlayer_WeaponServices_HandleDropWeapon);
 
 static bool g_bBlockMolotovSelfDmg = false;
 static bool g_bBlockAllDamage = false;
@@ -572,7 +571,7 @@ void FASTCALL Detour_CCSBot_PickNewAimSpot(CCSBot* pBot)
 		const float sharpShooter = 0.8f;
 		
 		VisiblePartType aimPartType = skill >= sharpShooter && pBot->m_visibleEnemyParts & HEAD ? HEAD : GUT;
-		if (aimPartType == GUT && !pBot->m_visibleEnemyParts & GUT && pBot->m_visibleEnemyParts & HEAD)
+		if (aimPartType == GUT && !(pBot->m_visibleEnemyParts & aimPartType) && pBot->m_visibleEnemyParts & HEAD)
 			aimPartType = HEAD;
 
 		pBot->m_targetSpot = Detour_CCSBot_GetPartPosition(pBot, pEnemy, aimPartType);
@@ -612,47 +611,6 @@ void FASTCALL Detour_CCSPlayerPawn_ClientCommand(CCSPlayerPawn *pPawn, const CCo
 			}
 		}
 	}
-}
-
-bool FASTCALL Detour_CCSPlayer_WeaponServices_HandleDropWeapon(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pWeapon, bool bSwapping)
-{
-	// fuck you cs2
-	//CBasePlayerWeapon* pCSWeapon = pWeapon ? pWeapon : (CBasePlayerWeapon*)pWeaponServices->m_hActiveWeapon.Get();
-	//if (V_strcmp(pCSWeapon->GetClassname(), "weapon_healthshot") == 0)
-	//{
-	//	CCSPlayerPawn* pPawn = pWeaponServices->GetPawn();
-	//	Vector vecWeaponThrowFromPos = pPawn->GetAbsOrigin();
-	//	vecWeaponThrowFromPos.z += pPawn->m_vecViewOffset().m_vecZ;
-
-	//	QAngle angWeaponThrowFromAngle = pPawn->m_angEyeAngles;
-
-	//	Vector vForward;
-	//	AngleVectors(angWeaponThrowFromAngle, &vForward, NULL, NULL);
-	//	vecWeaponThrowFromPos = vecWeaponThrowFromPos + (vForward * 100);
-
-	//	pWeaponServices->DropWeapon(pCSWeapon, &vForward, &vForward);
-	//	CCSWeaponBase* pHealth = CreateEntityByName<CCSWeaponBase>("weapon_healthshot");
-	//	if (pHealth)
-	//	{
-	//		int ammoType = pHealth->GetWeaponVData()->m_nPrimaryAmmoType;
-	//		if (false)
-	//		{
-	//			pHealth->m_pCollision->m_usSolidFlags = FSOLID_NOT_STANDABLE | FSOLID_TRIGGER | FSOLID_USE_TRIGGER_BOUNDS;
-	//			pHealth->m_MoveCollide = MOVECOLLIDE_FLY_BOUNCE;
-	//			pHealth->m_hPrevOwner = pPawn;
-	//			pHealth->m_flDroppedAtTime().m_Value = gpGlobals->curtime;
-
-	//			pHealth->DispatchSpawn();
-	//			pHealth->Teleport(&vecWeaponThrowFromPos, nullptr, &vForward);
-	//		}
-	//		else
-	//		{
-	//		}
-	//	}
-	//	return true;
-	//}
-
-	return CCSPlayer_WeaponServices_HandleDropWeapon(pWeaponServices, pWeapon, bSwapping);
 }
 
 float FASTCALL Detour_CCSPlayerPawn_GetMaxSpeed(CCSPlayerPawn* pPawn)

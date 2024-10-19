@@ -182,7 +182,7 @@ public:
         {
             BotProfile* profile = m_profileList[it];
 
-            if (!stricmp(name, profile->GetName()))
+            if (!V_stricmp(name, profile->GetName()))
                 return profile;
         }
 
