@@ -22,7 +22,6 @@ extern CCSGameRules* g_pGameRules;
 extern CGlobalVars* gpGlobals;
 
 #define BOSSMODEL_DEFAULT "characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl"
-#define ADMINMODEL_TEST "characters/models/nozb1/adult_neptune_player_model/adult_neptune_player_model.vmdl"
 
 enum ItemDefIndexIDs : short
 {
@@ -214,7 +213,6 @@ void vsBots_LoadBotNames()
 void vsBots_Precache(IEntityResourceManifest* pResourceManifest)
 {
 	pResourceManifest->AddResource(BOSSMODEL_DEFAULT);
-	pResourceManifest->AddResource(ADMINMODEL_TEST);
 	
 	pResourceManifest->AddResource("particles/explosions_fx/explosion_c4_500.vpcf");
 	pResourceManifest->AddResource("particles/cs2fixes/leader_tracer.vpcf");
@@ -368,9 +366,6 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			ZEPlayer* pPlayerTarget = pController->GetZEPlayer();
 			if (g_bPlayerGlowEnabled && !pPlayerTarget->GetGlowModel())
 				pPlayerTarget->StartGlow(Color(0, 255, 0, 255), -1);
-
-			if (pPlayerTarget->IsAdminFlagSet(ADMFLAG_GENERIC))
-				pPawn->SetModel(ADMINMODEL_TEST);
 
 			if (pController->IsBot())
 			{
@@ -1070,27 +1065,39 @@ void VSBots::OnAuthenticated(ZEPlayer* pPlayer)
 	{
 		ZEPlayerHandle handle = pPlayer->GetHandle();
 		ZDatabase::GetConnection()->Query(query, [handle](ISQLQuery* query)
+		{
+			ZEPlayer* pPlayer = handle.Get();
+			if (!pPlayer)
+				return;
+
+			DBInfo info;
+
+			ISQLResult* results = query->GetResultSet();
+			if (results->FetchRow())
 			{
-				ZEPlayer* pPlayer = handle.Get();
-				if (!pPlayer)
-					return;
+				info.iKills = results->GetInt(0);
+				info.iBossKills = results->GetInt(1);
+				info.iPoint = results->GetInt(2);
+				info.iWinPoint = results->GetInt(3);
+				info.iAssists = results->GetInt(4);
+				info.iBossAssists = results->GetInt(5);
+				info.pszSkinName = results->GetString(6);
+			}
+			else
+			{
+				info.iKills = 0;
+				info.iBossKills = 0;
+				info.iPoint = 0;
+				info.iWinPoint = 0;
+				info.iAssists = 0;
+				info.iBossAssists = 0;
+				info.pszSkinName = "";
+			}
 
-				DBInfo info = { 0, 0, 0, 0, false };
+			info.bDataLoaded = true;
 
-				ISQLResult* results = query->GetResultSet();
-				if (results->FetchRow())
-				{
-					info.iKills = results->GetInt(0);
-					info.iBossKills = results->GetInt(1);
-					info.iPoint = results->GetInt(2);
-					info.iWinPoint = results->GetInt(3);
-					info.iAssists = results->GetInt(4);
-					info.iBossAssists = results->GetInt(5);
-				}
-				info.bDataLoaded = true;
-
-				pPlayer->SetDBInfo(info);
-			});
+			pPlayer->SetDBInfo(info);
+		});
 	}
 }
 
@@ -1185,7 +1192,7 @@ void VSBots::SaveDB()
 
 		std::string escapedName = ZDatabase::GetConnection()->Escape(pController->GetPlayerName());
 		V_snprintf(query, sizeof(query), mysql_players_upsert,
-			pPlayer->GetSteamId64(), escapedName.c_str(), dbInfo.iKills, dbInfo.iBossKills, dbInfo.iPoint, dbInfo.iWinPoint, dbInfo.iAssists, dbInfo.iBossAssists);
+			pPlayer->GetSteamId64(), escapedName.c_str(), dbInfo.iKills, dbInfo.iBossKills, dbInfo.iPoint, dbInfo.iWinPoint, dbInfo.iAssists, dbInfo.iBossAssists, dbInfo.pszSkinName.c_str());
 		txn.queries.push_back(query);
 	}
 

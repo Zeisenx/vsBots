@@ -30,6 +30,7 @@
 #include "idlemanager.h"
 #include "vsbots.h"
 #include "saysound.h"
+#include "playerskin.h"
 
 #include "tier0/memdbgon.h"
 
@@ -85,6 +86,7 @@ GS_EVENT_MEMBER(CGameSystem, BuildGameSessionManifest)
 	PrecacheBeaconParticle(pResourceManifest);
 	Leader_Precache(pResourceManifest);
 	SaySound_Precache(pResourceManifest);
+	PlayerSkin_Precache(pResourceManifest);
 
 	pResourceManifest->AddResource(g_sBurnParticle.c_str());
 }

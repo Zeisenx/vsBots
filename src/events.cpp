@@ -28,6 +28,7 @@
 #include "entity/cgamerules.h"
 #include "mapcycle.h"
 #include "vsbots.h"
+#include "playerskin.h"
 #include "zombiereborn.h"
 #include "votemanager.h"
 #include "leader.h"
@@ -140,6 +141,7 @@ GAME_EVENT_F(player_spawn)
 		return;
 
 	vsBots_OnPlayerSpawn(pController);
+	PlayerSkin_OnPlayerSpawn(pController);
 
 	ZEPlayer* pPlayer = pController->GetZEPlayer();
 

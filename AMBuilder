@@ -78,6 +78,7 @@ for sdk_target in MMSPlugin.sdk_targets:
     'src/mapcycle.cpp',
     'src/vsbots.cpp',
     'src/saysound.cpp',
+    'src/playerskin.cpp',
     'src/zombiereborn.cpp',
     'src/customio.cpp',
     'src/entitylistener.cpp',

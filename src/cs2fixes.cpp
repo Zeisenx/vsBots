@@ -63,6 +63,7 @@
 #include "leader.h"
 #include "database.h"
 #include "saysound.h"
+#include "playerskin.h"
 #include "usermessages.pb.h"
 
 #include "tier0/memdbgon.h"
@@ -1016,6 +1017,7 @@ void CS2Fixes::OnLevelInit( char const *pMapName,
 
 	vsBots_OnLevelInit(pMapName);
 	MapCycle_OnLevelInit(pMapName);
+	PlayerSkin_OnLevelInit(pMapName);
 }
 
 // Potentially might not work

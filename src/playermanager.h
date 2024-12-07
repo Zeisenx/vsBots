@@ -37,6 +37,7 @@ struct DBInfo
 	int iWinPoint;
 	int iAssists;
 	int iBossAssists;
+	std::string pszSkinName;
 	bool bDataLoaded;
 };
 #define NO_TARGET_BLOCKS		(0)
@@ -192,6 +193,7 @@ public:
 		m_dbInfo.iWinPoint = 0;
 		m_dbInfo.iAssists = 0;
 		m_dbInfo.iBossAssists = 0;
+		m_dbInfo.pszSkinName = "";
 		m_pActiveZRClass = nullptr;
 		m_pActiveZRModel = nullptr;
 	}

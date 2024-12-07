@@ -209,6 +209,7 @@
     <ClCompile Include="src\panoramavote.cpp" />
     <ClCompile Include="src\patches.cpp" />
     <ClCompile Include="src\playermanager.cpp" />
+    <ClCompile Include="src\playerskin.cpp" />
     <ClCompile Include="src\saysound.cpp" />
     <ClCompile Include="src\user_preferences.cpp" />
     <ClCompile Include="src\votemanager.cpp" />
@@ -272,6 +273,7 @@
     <ClInclude Include="src\panoramavote.h" />
     <ClInclude Include="src\patches.h" />
     <ClInclude Include="src\playermanager.h" />
+    <ClInclude Include="src\playerskin.h" />
     <ClInclude Include="src\recipientfilters.h" />
     <ClInclude Include="src\saysound.h" />
     <ClInclude Include="src\serversideclient.h" />
