@@ -170,7 +170,7 @@ public:
 		m_bVotedRTV = false;
 		m_bVotedExtend = false;
 		m_bIsInfected = false;
-		m_flRTVVoteTime = 0;
+		m_flRTVVoteTime = -60.0f;
 		m_flExtendVoteTime = 0;
 		m_iFloodTokens = 0;
 		m_flLastTalkTime = 0;
@@ -178,8 +178,12 @@ public:
 		m_iMZImmunity = 0; // out of 100
 		m_flNominateTime = -60.0f;
 		m_iPlayerState = 1; // STATE_WELCOME is the initial state
-		m_iLeaderIndex = 0;
-		m_iLeaderTracerIndex = 0;
+		m_bIsLeader = false;
+		m_handleMark = nullptr;
+		m_colorLeader = Color(0, 0, 0, 0);
+		m_colorTracer = Color(0, 0, 0, 0);
+		m_colorGlow = Color(0, 0, 0, 0);
+		m_colorBeacon = Color(0, 0, 0, 0);
 		m_flLeaderVoteTime = -30.0f;
 		m_flSpeedMod = 1.f;
 		m_flMaxSpeed = 1.f;
@@ -242,8 +246,12 @@ public:
 	void SetFlashLight(CBarnLight *pLight) { m_hFlashLight.Set(pLight); }
 	void SetBeaconParticle(CParticleSystem *pParticle) { m_hBeaconParticle.Set(pParticle); }
 	void SetPlayerState(uint32 iPlayerState) { m_iPlayerState = iPlayerState; }
-	void SetLeader(int leaderIndex);
-	void SetLeaderTracer(int tracerIndex) { m_iLeaderTracerIndex = tracerIndex; }
+	void SetLeader(bool bIsLeader) { m_bIsLeader = bIsLeader; }
+	void CreateMark(float fDuration, Vector vecOrigin);
+	void SetLeaderColor(Color colorLeader) {m_colorLeader = colorLeader;}
+	void SetTracerColor(Color colorTracer) { m_colorTracer = colorTracer; }
+	void SetGlowColor(Color colorGlow) { m_colorGlow = colorGlow; }
+	void SetBeaconColor(Color colorBeacon) { m_colorBeacon = colorBeacon; }
 	void SetLeaderVoteTime(float flCurtime) { m_flLeaderVoteTime = flCurtime; }
 	void SetGlowModel(CBaseModelEntity *pModel) { m_hGlowModel.Set(pModel); }
 	void SetSpeedMod(float flSpeedMod) { m_flSpeedMod = flSpeedMod; }
@@ -284,9 +292,11 @@ public:
 	CParticleSystem *GetBeaconParticle() { return m_hBeaconParticle.Get(); }
 	ZEPlayerHandle GetHandle() { return m_Handle; }
 	uint32 GetPlayerState() { return m_iPlayerState; }
-	bool IsLeader() { return (bool) m_iLeaderIndex; }
-	int GetLeaderIndex() { return m_iLeaderIndex; }
-	int GetLeaderTracer() { return m_iLeaderTracerIndex; }
+	bool IsLeader() { return m_bIsLeader; }
+	Color GetLeaderColor() { return m_colorLeader; }
+	Color GetTracerColor() { return m_colorTracer; }
+	Color GetGlowColor() { return m_colorGlow; }
+	Color GetBeaconColor() { return m_colorBeacon; }
 	int GetLeaderVoteCount();
 	bool HasPlayerVotedLeader(ZEPlayer* pPlayer);
 	float GetLeaderVoteTime() { return m_flLeaderVoteTime; }
@@ -311,6 +321,7 @@ public:
 	void PurgeLeaderVotes();
 	void StartGlow(Color color, int duration);
 	void EndGlow();
+	void SetSteamIdAttribute();
 
 private:
 	bool m_bAuthenticated;
@@ -343,9 +354,13 @@ private:
 	CHandle<CParticleSystem> m_hBeaconParticle;
 	ZEPlayerHandle m_Handle;
 	uint32 m_iPlayerState;
-	int m_iLeaderIndex;
+	bool m_bIsLeader;
+	CHandle<CBaseEntity> m_handleMark;
+	Color m_colorLeader;
+	Color m_colorTracer;
+	Color m_colorGlow;
+	Color m_colorBeacon;
 	CUtlVector<ZEPlayerHandle> m_vecLeaderVotes;
-	int m_iLeaderTracerIndex;
 	float m_flLeaderVoteTime;
 	CHandle<CBaseModelEntity> m_hGlowModel;
 	float m_flSpeedMod;
@@ -411,6 +426,7 @@ public:
 	bool IsPlayerUsingNoShake(int slot) { return m_nUsingNoShake & ((uint64)1 << slot); }
 
 	void UpdatePlayerStates();
+	int GetOnlinePlayerCount(bool bCountBots);
 
 	STEAM_GAMESERVER_CALLBACK_MANUAL(CPlayerManager, OnValidateAuthTicket, ValidateAuthTicketResponse_t, m_CallbackValidateAuthTicketResponse);
 
