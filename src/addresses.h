@@ -93,4 +93,5 @@ namespace addresses
 	inline void(FASTCALL* CTakeDamageInfo_Constructor)(CTakeDamageInfo* pThis, CBaseEntity* pInflictor, CBaseEntity* pAttacker, CBaseEntity* pAbility,
 													   const Vector* vecDamageForce, const Vector* vecDamagePosition, float flDamage, int bitsDamageType, int iCustomDamage, void* a10);
 	inline void(FASTCALL* CNetworkStringTable_DeleteAllStrings)(INetworkStringTable* pThis);
+	inline void(FASTCALL* CBaseEntity_StopSound)(CBaseEntity* pEntity, const char* pszSound);
 } // namespace addresses
