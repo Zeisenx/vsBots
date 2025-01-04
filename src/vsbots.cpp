@@ -158,6 +158,7 @@ void CPrintChatToAll(const char* msg, ...)
 
 void DuplicateSpawnPoint(int team, int maxCount)
 {
+	return;
 	CUtlVector<SpawnPoint*>* botTeamSpawns = team == CS_TEAM_T ? g_pGameRules->m_TerroristSpawnPoints() : g_pGameRules->m_CTSpawnPoints();
 
 	const int botsCount = 50;

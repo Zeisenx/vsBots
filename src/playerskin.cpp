@@ -6,6 +6,9 @@
 #include "ctimer.h"
 #include "playerskin.h"
  
+bool g_bPlayerSkinEnable = true;
+FAKE_BOOL_CVAR(cs2f_playerskin_enable , "Skin Enable", g_bPlayerSkinEnable, true, true)
+
 KeyValues* g_pKVConfig;
 
 void LoadSkinConfig();
@@ -42,7 +45,7 @@ void LoadSkinConfig()
 
 bool IsValidSkin(const char* keyName)
 {
-	if (!g_pKVConfig)
+	if (!g_pKVConfig || !g_bPlayerSkinEnable)
 		return false;
 
 	for (KeyValues* pKey = g_pKVConfig->GetFirstSubKey(); pKey; pKey = pKey->GetNextKey())
@@ -58,7 +61,7 @@ bool IsValidSkin(const char* keyName)
 
 bool SetSkin(CCSPlayerPawn* pPawn, std::string keyName)
 {
-	if (!g_pKVConfig)
+	if (!g_pKVConfig || !g_bPlayerSkinEnable)
 		return false;
 
 	for (KeyValues* pKey = g_pKVConfig->GetFirstSubKey(); pKey; pKey = pKey->GetNextKey())
@@ -75,6 +78,9 @@ bool SetSkin(CCSPlayerPawn* pPawn, std::string keyName)
 
 CON_COMMAND_CHAT(skin, "- set skin")
 {
+	if (!g_bPlayerSkinEnable)
+		return;
+	
 	if (!player)
 	{
 		ClientPrint(player, HUD_PRINTCONSOLE, CHAT_PREFIX "You cannot use this command from the server console.");
