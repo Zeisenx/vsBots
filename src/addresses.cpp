@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -18,20 +18,20 @@
  */
 
 #include "addresses.h"
-#include "utils/module.h"
 #include "gameconfig.h"
+#include "utils/module.h"
 
 #include "tier0/memdbgon.h"
 
-extern CGameConfig *g_GameConfig;
+extern CGameConfig* g_GameConfig;
 
-#define RESOLVE_SIG(gameConfig, name, variable) \
-	variable = (decltype(variable))gameConfig->ResolveSignature(name);	\
-	if (!variable)														\
-		return false;													\
+#define RESOLVE_SIG(gameConfig, name, variable)                        \
+	variable = (decltype(variable))gameConfig->ResolveSignature(name); \
+	if (!variable)                                                     \
+		return false;                                                  \
 	Message("Found %s at 0x%p\n", name, variable);
 
-bool addresses::Initialize(CGameConfig *g_GameConfig)
+bool addresses::Initialize(CGameConfig* g_GameConfig)
 {
 	modules::engine = new CModule(ROOTBIN, "engine2");
 	modules::tier0 = new CModule(ROOTBIN, "tier0");
@@ -40,6 +40,7 @@ bool addresses::Initialize(CGameConfig *g_GameConfig)
 	modules::vscript = new CModule(ROOTBIN, "vscript");
 	modules::networksystem = new CModule(ROOTBIN, "networksystem");
 	modules::vphysics2 = new CModule(ROOTBIN, "vphysics2");
+	modules::matchmaking = new CModule(GAMEBIN, "matchmaking");
 	modules::client = nullptr;
 
 	if (!CommandLine()->HasParm("-dedicated"))

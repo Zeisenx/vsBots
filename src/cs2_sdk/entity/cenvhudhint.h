@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -25,7 +25,7 @@
 class CEnvHudHint : public CBaseEntity
 {
 public:
-    DECLARE_SCHEMA_CLASS(CEnvHudHint)
+	DECLARE_SCHEMA_CLASS(CEnvHudHint)
 
-    SCHEMA_FIELD(CUtlSymbolLarge, m_iszMessage)
+	SCHEMA_FIELD(CUtlSymbolLarge, m_iszMessage)
 };

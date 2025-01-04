@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "cbaseentity.h"
+#include "schema.h"
 
 struct VPhysicsCollisionAttribute_t
 {

@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  *
  * DynLibUtils
  * Copyright (C) 2023 komashchenko (Phoenix)
@@ -29,7 +29,6 @@ void Plat_WriteMemory(void* pPatchAddress, uint8_t* pPatch, int iPatchSize)
 {
 	WriteProcessMemory(GetCurrentProcess(), pPatchAddress, (void*)pPatch, iPatchSize, nullptr);
 }
-
 
 void CModule::InitializeSections()
 {
@@ -83,7 +82,7 @@ void* CModule::FindVirtualTable(const std::string& name)
 	{
 		auto completeObjectLocatorHeader = (uintptr_t)completeObjectLocator - 0xC;
 		// check RTTI Complete Object Locator header, always 0x1
-		if(*(int32_t*)(completeObjectLocatorHeader) != 1)
+		if (*(int32_t*)(completeObjectLocatorHeader) != 1)
 			continue;
 
 		// check RTTI Complete Object Locator vtable offset

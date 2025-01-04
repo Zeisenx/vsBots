@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -19,9 +19,9 @@
 
 #pragma once
 
-#include "ehandle.h"
 #include "cbaseentity.h"
 #include "ccsplayerpawn.h"
+#include "ehandle.h"
 
 enum class PlayerConnectedState : uint32_t
 {
@@ -50,8 +50,8 @@ public:
 	// - The player's actual pawn
 	// - An observer pawn if spectating
 	// - A bot pawn if controlling one
-	CBasePlayerPawn *GetPawn() { return m_hPawn.Get(); }
-	const char *GetPlayerName() { return m_iszPlayerName(); }
+	CBasePlayerPawn* GetPawn() { return m_hPawn.Get(); }
+	const char* GetPlayerName() { return m_iszPlayerName(); }
 	int GetPlayerSlot() { return entindex() - 1; }
 	bool IsConnected() { return m_iConnected() == PlayerConnectedState::PlayerConnected; }
 	void SetPawn(CCSPlayerPawn* pawn)

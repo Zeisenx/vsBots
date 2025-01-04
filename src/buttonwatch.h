@@ -18,17 +18,7 @@
  */
 
 #pragma once
+#include "detours.h"
 
-#include "../schema.h"
-#include "cbasetrigger.h"
-
-#define SF_TRIG_PUSH_ONCE 0x80
-
-class CTriggerPush : public CBaseTrigger
-{
-public:
-	DECLARE_SCHEMA_CLASS(CTriggerPush);
-
-	SCHEMA_FIELD(Vector, m_vecPushDirEntitySpace)
-	SCHEMA_FIELD(bool, m_bTriggerOnStartTouch)
-};
+bool IsButtonWatchEnabled();
+void ButtonWatch(const CEntityIOOutput* pThis, CEntityInstance* pActivator, CEntityInstance* pCaller, const CVariant* value, float flDelay);

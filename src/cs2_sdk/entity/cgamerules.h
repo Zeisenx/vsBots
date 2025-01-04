@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -18,9 +18,9 @@
  */
 
 #pragma once
-#include <platform.h>
-#include "globaltypes.h"
 #include "cbaseentity.h"
+#include "globaltypes.h"
+#include <platform.h>
 
 enum CSRoundEndReason
 {
@@ -40,10 +40,10 @@ enum CSRoundEndReason
 	TerroristsNotEscaped, /**< Terrorists have not escaped! */
 	VIPNotEscaped,		  /**< VIP has not escaped! - Doesn't exist on CS:GO */
 	GameStart,			  /**< Game Commencing! */
-	TerroristsSurrender, /**< Terrorists Surrender */
-	CTSurrender,		 /**< CTs Surrender */
-	TerroristsPlanted,	 /**< Terrorists Planted the bomb */
-	CTsReachedHostage,	 /**< CTs Reached the hostage */
+	TerroristsSurrender,  /**< Terrorists Surrender */
+	CTSurrender,		  /**< CTs Surrender */
+	TerroristsPlanted,	  /**< Terrorists Planted the bomb */
+	CTsReachedHostage,	  /**< CTs Reached the hostage */
 	SurvivalWin,
 	SurvivalDraw
 };
@@ -83,5 +83,5 @@ class CCSGameRulesProxy : public CBaseEntity
 public:
 	DECLARE_SCHEMA_CLASS(CCSGameRulesProxy)
 
-	SCHEMA_FIELD(CCSGameRules *, m_pGameRules)
+	SCHEMA_FIELD(CCSGameRules*, m_pGameRules)
 };

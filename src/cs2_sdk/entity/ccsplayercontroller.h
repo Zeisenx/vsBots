@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -19,12 +19,12 @@
 
 #pragma once
 
-#include "cbaseplayercontroller.h"
-#include "services.h"
 #include "../playermanager.h"
 #include "../serversideclient.h"
+#include "cbaseplayercontroller.h"
+#include "services.h"
 
-extern CServerSideClient *GetClientBySlot(CPlayerSlot slot);
+extern CServerSideClient* GetClientBySlot(CPlayerSlot slot);
 
 extern CGameEntitySystem* g_pEntitySystem;
 
@@ -66,7 +66,7 @@ public:
 	}
 
 	// Returns the actual player pawn
-	CCSPlayerPawn *GetPlayerPawn()
+	CCSPlayerPawn* GetPlayerPawn()
 	{
 		return m_hPlayerPawn().Get();
 	}
@@ -76,7 +76,7 @@ public:
 		return g_playerManager->GetPlayer(GetPlayerSlot());
 	}
 
-	CServerSideClient *GetServerSideClient()
+	CServerSideClient* GetServerSideClient()
 	{
 		return GetClientBySlot(GetPlayerSlot());
 	}
@@ -98,18 +98,14 @@ public:
 			return;
 
 		if (iTeam == CS_TEAM_SPECTATOR)
-		{
 			ChangeTeam(iTeam);
-		}
 		else
-		{
 			addresses::CCSPlayerController_SwitchTeam(this, iTeam);
-		}
 	}
 
 	void Respawn()
 	{
-		CCSPlayerPawn *pPawn = GetPlayerPawn();
+		CCSPlayerPawn* pPawn = GetPlayerPawn();
 		if (!pPawn || pPawn->IsAlive())
 			return;
 
@@ -121,7 +117,7 @@ public:
 	CSPlayerState GetPawnState()
 	{
 		// All CS2 pawns are derived from this
-		CCSPlayerPawnBase *pPawn = (CCSPlayerPawnBase*)GetPawn();
+		CCSPlayerPawnBase* pPawn = (CCSPlayerPawnBase*)GetPawn();
 
 		// The player is still joining so their pawn doesn't exist yet, and STATE_WELCOME is what they start with
 		if (!pPawn)
@@ -132,7 +128,7 @@ public:
 
 	CSPlayerState GetPlayerPawnState()
 	{
-		CCSPlayerPawn *pPawn = GetPlayerPawn();
+		CCSPlayerPawn* pPawn = GetPlayerPawn();
 
 		// The player is still joining so their pawn doesn't exist yet, and STATE_WELCOME is what they start with
 		if (!pPawn)
@@ -141,7 +137,7 @@ public:
 		return pPawn->m_iPlayerState();
 	}
 
-	CBaseEntity *GetObserverTarget()
+	CBaseEntity* GetObserverTarget()
 	{
 		auto pPawn = GetPawn();
 

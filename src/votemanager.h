@@ -2,7 +2,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -36,6 +36,7 @@ enum class EExtendState
 	IN_PROGRESS,
 	POST_EXTEND_COOLDOWN,
 	POST_EXTEND_NO_EXTENDS_LEFT,
+	POST_EXTEND_FAILED,
 	POST_LAST_ROUND_END,
 	POST_RTV,
 	NO_EXTENDS,
@@ -43,15 +44,14 @@ enum class EExtendState
 
 enum EExtendVoteMode
 {
-	EXTENDVOTE_OFF,			// No extend votes can be called
-	EXTENDVOTE_ADMINONLY,	// Only admins can initiate extend votes, all further options also include this
-	EXTENDVOTE_MANUAL,		// Extend votes are triggered by players typing !ve
-	EXTENDVOTE_AUTO,		// Extend votes can be triggered by !ve or when map timelimit reaches a given value
+	EXTENDVOTE_OFF,		  // No extend votes can be called
+	EXTENDVOTE_ADMINONLY, // Only admins can initiate extend votes, all further options also include this
+	EXTENDVOTE_MANUAL,	  // Extend votes are triggered by players typing !ve
+	EXTENDVOTE_AUTO,	  // Extend votes can be triggered by !ve or when map timelimit reaches a given value
 };
 
 extern ERTVState g_RTVState;
 extern EExtendState g_ExtendState;
-extern int g_iExtendsLeft;
 extern bool g_bVoteManagerEnable;
 
 void VoteManager_Init();

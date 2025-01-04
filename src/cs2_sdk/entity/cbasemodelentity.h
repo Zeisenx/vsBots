@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -34,7 +34,7 @@ public:
 	SCHEMA_FIELD(float, m_flDissolveStartTime)
 	SCHEMA_FIELD(Vector, m_vecViewOffset)
 
-	void SetModel(const char *szModel)
+	void SetModel(const char* szModel)
 	{
 		addresses::CBaseModelEntity_SetModel(this, szModel);
 	}
@@ -44,7 +44,7 @@ public:
 		m_Collision().m_CollisionGroup = static_cast<uint8>(nCollisionGroup);
 		CollisionRulesChanged();
 	}
-	
+
 	const char* GetModelName()
 	{
 		return ((CSkeletonInstance*)m_CBodyComponent->m_pSceneNode.Get())->m_modelState().m_ModelName.Get().String();

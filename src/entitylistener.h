@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -24,8 +24,8 @@ extern CGameEntitySystem* g_pEntitySystem;
 
 class CEntityListener : public IEntityListener
 {
-    void OnEntitySpawned(CEntityInstance* pEntity) override;
-    void OnEntityCreated(CEntityInstance* pEntity) override;
-    void OnEntityDeleted(CEntityInstance* pEntity) override;
-    void OnEntityParentChanged(CEntityInstance* pEntity, CEntityInstance* pNewParent) override;
+	void OnEntitySpawned(CEntityInstance* pEntity) override;
+	void OnEntityCreated(CEntityInstance* pEntity) override;
+	void OnEntityDeleted(CEntityInstance* pEntity) override;
+	void OnEntityParentChanged(CEntityInstance* pEntity, CEntityInstance* pNewParent) override;
 };

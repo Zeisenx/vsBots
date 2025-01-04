@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -39,7 +39,7 @@ public:
 	SCHEMA_FIELD(QAngle, v_angle)
 
 	// Drops any map-spawned weapons the pawn is holding
-	// NOTE: Currently very broken with map items (entities parented to weapons?) due to a game bug..? Needs further investigation/work
+	// NOTE: This doesn't predict correctly to the weapon holder! Looks very funky when testing, but not really an issue on live servers
 	void DropMapWeapons()
 	{
 		if (!m_pWeaponServices())
@@ -70,5 +70,5 @@ public:
 		CALL_VIRTUAL(void, offset, this, bExplode, bForce);
 	}
 
-	CBasePlayerController *GetController() { return m_hController.Get(); }
+	CBasePlayerController* GetController() { return m_hController.Get(); }
 };

@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2024 Source2ZE
+ * Copyright (C) 2023-2025 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -17,32 +17,31 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "usermessages.pb.h"
-#include "detours.h"
-#include "common.h"
-#include "utlstring.h"
-#include "recipientfilters.h"
 #include "commands.h"
-#include "utils/entity.h"
+#include "adminsystem.h"
+#include "common.h"
+#include "ctimer.h"
+#include "detours.h"
+#include "discord.h"
+#include "engine/igameeventsystem.h"
 #include "entity/cbaseentity.h"
-#include "entity/ccsweaponbase.h"
+#include "entity/cbasemodelentity.h"
 #include "entity/ccsplayercontroller.h"
 #include "entity/ccsplayerpawn.h"
-#include "entity/cbasemodelentity.h"
 #include "entity/ccsweaponbase.h"
 #include "entity/cparticlesystem.h"
 #include "entity/cgamerules.h"
 #include "entity/lights.h"
-#include "playermanager.h"
-#include "adminsystem.h"
-#include "leader.h"
-#include "ctimer.h"
 #include "httpmanager.h"
-#include "discord.h"
-#include "zombiereborn.h"
+#include "leader.h"
 #include "networksystem/inetworkmessages.h"
-#include "engine/igameeventsystem.h"
+#include "playermanager.h"
+#include "recipientfilters.h"
 #include "tier0/vprof.h"
+#include "usermessages.pb.h"
+#include "utils/entity.h"
+#include "utlstring.h"
+#include "zombiereborn.h"
 #undef snprintf
 #include "vendor/nlohmann/json.hpp"
 
@@ -50,8 +49,8 @@
 
 using json = nlohmann::json;
 
-extern IGameEventSystem *g_gameEventSystem;
-extern CGameEntitySystem *g_pEntitySystem;
+extern IGameEventSystem* g_gameEventSystem;
+extern CGameEntitySystem* g_pEntitySystem;
 extern IVEngineServer2* g_pEngineServer2;
 extern ISteamHTTP* g_http;
 extern CCSGameRules* g_pGameRules;
@@ -62,6 +61,7 @@ bool g_bEnableAdminCommands;
 FAKE_BOOL_CVAR(cs2f_commands_enable, "Whether to enable chat commands", g_bEnableCommands, false, 0)
 FAKE_BOOL_CVAR(cs2f_admin_commands_enable, "Whether to enable admin chat commands", g_bEnableAdminCommands, false, 0)
 
+// clang-format off
 WeaponMapEntry_t WeaponMap[] = {
 	{{"bizon"},							"weapon_bizon",			"PP-Bizon",			1400, 26, GEAR_SLOT_RIFLE},
 	{{"mac10", "mac"},					"weapon_mac10",			"MAC-10",			1050, 27, GEAR_SLOT_RIFLE},
@@ -102,6 +102,7 @@ WeaponMapEntry_t WeaponMap[] = {
 	{{"kevlar"},						"item_kevlar",			"Kevlar Vest",		650, 50, GEAR_SLOT_UTILITY},
 	{{"healthshot", "kit", "healthkit"},			"weapon_healthshot",			"Healthshot",		5000, 57, GEAR_SLOT_UTILITY},
 };
+// clang-format on
 
 bool g_bEnableWeapons = false;
 
@@ -162,9 +163,9 @@ int GetGrenadeAmmo(CCSPlayer_WeaponServices* pWeaponServices, WeaponMapEntry_t w
 
 int GetGrenadeAmmoTotal(CCSPlayer_WeaponServices* pWeaponServices)
 {
-	if(!pWeaponServices)
+	if (!pWeaponServices)
 		return -1;
-	
+
 	int grenadeAmmoOffsets[] = {
 		AMMO_OFFSET_HEGRENADE,
 		AMMO_OFFSET_FLASHBANG,
@@ -175,10 +176,8 @@ int GetGrenadeAmmoTotal(CCSPlayer_WeaponServices* pWeaponServices)
 
 	int totalGrenades = 0;
 	for (int i = 0; i < (sizeof(grenadeAmmoOffsets) / sizeof(int)); i++)
-	{
 		totalGrenades += pWeaponServices->m_iAmmo[grenadeAmmoOffsets[i]];
-	}
-	
+
 	return totalGrenades;
 }
 
@@ -241,7 +240,7 @@ void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 	CCSPlayer_ItemServices* pItemServices = pPawn->m_pItemServices;
 	CCSPlayer_WeaponServices* pWeaponServices = pPawn->m_pWeaponServices;
 
-	// it can sometimes be null when player joined on the very first round? 
+	// it can sometimes be null when player joined on the very first round?
 	if (!pItemServices || !pWeaponServices)
 		return;
 
@@ -269,13 +268,13 @@ void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 
 		if (iMatchingGrenades >= iGrenadeLimitDefault)
 		{
-			ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX"You cannot carry any more %ss (Max %i)", weaponEntry.szWeaponName, iGrenadeLimitDefault);
+			ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX "You cannot carry any more %ss (Max %i)", weaponEntry.szWeaponName, iGrenadeLimitDefault);
 			return;
 		}
 
 		if (iTotalGrenades >= iGrenadeLimitTotal)
 		{
-			ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX"You cannot carry any more grenades (Max %i)", iGrenadeLimitTotal);
+			ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX "You cannot carry any more grenades (Max %i)", iGrenadeLimitTotal);
 			return;
 		}
 	}
@@ -376,7 +375,7 @@ void RegisterWeaponCommands()
 	}
 }
 
-void ParseChatCommand(const char *pMessage, CCSPlayerController *pController)
+void ParseChatCommand(const char* pMessage, CCSPlayerController* pController)
 {
 	if (!pController || !pController->IsConnected())
 		return;
@@ -393,20 +392,18 @@ void ParseChatCommand(const char *pMessage, CCSPlayerController *pController)
 	uint16 index = g_CommandList.Find(hash_32_fnv1a_const(name.c_str()));
 
 	if (g_CommandList.IsValidIndex(index))
-	{
 		(*g_CommandList[index])(args, pController);
-	}
 }
 
-bool CChatCommand::CheckCommandAccess(CCSPlayerController *pPlayer, uint64 flags)
+bool CChatCommand::CheckCommandAccess(CCSPlayerController* pPlayer, uint64 flags)
 {
 	if (!pPlayer)
 		return false;
 
 	int slot = pPlayer->GetPlayerSlot();
 
-	ZEPlayer *pZEPlayer = g_playerManager->GetPlayer(slot);
-	
+	ZEPlayer* pZEPlayer = g_playerManager->GetPlayer(slot);
+
 	if (!pZEPlayer)
 		return false;
 
@@ -437,7 +434,7 @@ bool CChatCommand::CheckCommandAccess(CCSPlayerController *pPlayer, uint64 flags
 	return true;
 }
 
-void ClientPrintAll(int hud_dest, const char *msg, ...)
+void ClientPrintAll(int hud_dest, const char* msg, ...)
 {
 	va_list args;
 	va_start(args, msg);
@@ -447,7 +444,7 @@ void ClientPrintAll(int hud_dest, const char *msg, ...)
 
 	va_end(args);
 
-	INetworkMessageInternal *pNetMsg = g_pNetworkMessages->FindNetworkMessagePartial("TextMsg");
+	INetworkMessageInternal* pNetMsg = g_pNetworkMessages->FindNetworkMessagePartial("TextMsg");
 	auto data = pNetMsg->AllocateMessage()->ToPB<CUserMessageTextMsg>();
 
 	data->set_dest(hud_dest);
@@ -463,7 +460,7 @@ void ClientPrintAll(int hud_dest, const char *msg, ...)
 	ConMsg("%s\n", buf);
 }
 
-void ClientPrint(CCSPlayerController *player, int hud_dest, const char *msg, ...)
+void ClientPrint(CCSPlayerController* player, int hud_dest, const char* msg, ...)
 {
 	va_list args;
 	va_start(args, msg);
@@ -479,7 +476,7 @@ void ClientPrint(CCSPlayerController *player, int hud_dest, const char *msg, ...
 		return;
 	}
 
-	INetworkMessageInternal *pNetMsg = g_pNetworkMessages->FindNetworkMessagePartial("TextMsg");
+	INetworkMessageInternal* pNetMsg = g_pNetworkMessages->FindNetworkMessagePartial("TextMsg");
 	auto data = pNetMsg->AllocateMessage()->ToPB<CUserMessageTextMsg>();
 
 	data->set_dest(hud_dest);
@@ -495,7 +492,6 @@ void ClientPrint(CCSPlayerController *player, int hud_dest, const char *msg, ...
 bool g_bEnableStopSound = false;
 
 FAKE_BOOL_CVAR(cs2f_stopsound_enable, "Whether to enable stopsound", g_bEnableStopSound, false, false)
-
 
 CON_COMMAND_CHAT(stopsound, "- Toggle weapon sounds")
 {
@@ -515,7 +511,8 @@ CON_COMMAND_CHAT(stopsound, "- Toggle weapon sounds")
 	g_playerManager->SetPlayerStopSound(iPlayer, bSilencedSet);
 	g_playerManager->SetPlayerSilenceSound(iPlayer, !bSilencedSet && !bStopSet);
 
-	ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX "You have %s weapon sounds.", bSilencedSet ? "disabled" : !bSilencedSet && !bStopSet ? "silenced" : "enabled");
+	ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX "You have %s weapon sounds.", bSilencedSet ? "disabled" : !bSilencedSet && !bStopSet ? "silenced" :
+																																		  "enabled");
 }
 
 CON_COMMAND_CHAT(toggledecals, "- Toggle world decals, if you're into having 10 fps in ZE")
@@ -560,7 +557,7 @@ bool g_bEnableHide = false;
 static int g_iDefaultHideDistance = 250;
 static int g_iMaxHideDistance = 2000;
 
-FAKE_BOOL_CVAR(cs2f_hide_enable, "Whether to enable hide", g_bEnableHide, false, false)
+FAKE_BOOL_CVAR(cs2f_hide_enable, "Whether to enable hide (WARNING: randomly crashes clients since 2023-12-13 CS2 update)", g_bEnableHide, false, false)
 FAKE_INT_CVAR(cs2f_hide_distance_default, "The default distance for hide", g_iDefaultHideDistance, 250, false)
 FAKE_INT_CVAR(cs2f_hide_distance_max, "The max distance for hide", g_iMaxHideDistance, 2000, false)
 
@@ -589,7 +586,7 @@ CON_COMMAND_CHAT(hide, "<distance> - Hide nearby players")
 		return;
 	}
 
-	ZEPlayer *pZEPlayer = player->GetZEPlayer();
+	ZEPlayer* pZEPlayer = player->GetZEPlayer();
 
 	// Something has to really go wrong for this to happen
 	if (!pZEPlayer)
@@ -701,7 +698,7 @@ CON_COMMAND_CHAT(spec, "[name] - Spectate another player or join spectators")
 	// 1 frame delay as observer services will be null on same frame as spectator team switch
 	CHandle<CCSPlayerController> hPlayer = player->GetHandle();
 	CHandle<CCSPlayerController> hTarget = pTarget->GetHandle();
-	new CTimer(0.0f, false, false, [hPlayer, hTarget](){
+	new CTimer(0.0f, false, false, [hPlayer, hTarget]() {
 		CCSPlayerController* pPlayer = hPlayer.Get();
 		CCSPlayerController* pTargetPlayer = hTarget.Get();
 		if (!pPlayer || !pTargetPlayer)
@@ -751,7 +748,7 @@ CON_COMMAND_CHAT(info, "<name> - Get a player's information")
 	{
 		CCSPlayerController* pTarget = CCSPlayerController::FromSlot(pSlots[i]);
 		ZEPlayer* zpTarget = pTarget->GetZEPlayer();
-		
+
 		ClientPrint(player, HUD_PRINTCONSOLE, "%s", pTarget->GetPlayerName());
 		ClientPrint(player, HUD_PRINTCONSOLE, "\tUser ID: %i", g_pEngineServer2->GetPlayerUserId(pTarget->GetPlayerSlot()).Get());
 
@@ -826,7 +823,7 @@ CON_COMMAND_CHAT(fl, "- Flashlight")
 	if (!player)
 		return;
 
-	CCSPlayerPawn *pPawn = (CCSPlayerPawn *)player->GetPawn();
+	CCSPlayerPawn* pPawn = (CCSPlayerPawn*)player->GetPawn();
 
 	auto ptr = pPawn->m_pMovementServices->m_nButtons().m_pButtonStates();
 
@@ -837,7 +834,7 @@ CON_COMMAND_CHAT(fl, "- Flashlight")
 	origin.z += 64.0f;
 	origin += forward * 54.0f; // The minimum distance such that an awp wouldn't block the light
 
-	CBarnLight *pLight = CreateEntityByName<CBarnLight>("light_barn");
+	CBarnLight* pLight = CreateEntityByName<CBarnLight>("light_barn");
 
 	pLight->m_bEnabled = true;
 	pLight->m_Color->SetColor(255, 255, 255, 255);
@@ -853,7 +850,7 @@ CON_COMMAND_CHAT(fl, "- Flashlight")
 	pLight->Teleport(&origin, &pPawn->m_angEyeAngles(), nullptr);
 
 	// Have to use keyvalues for this since the schema prop is a resource handle
-	CEntityKeyValues *pKeyValues = new CEntityKeyValues();
+	CEntityKeyValues* pKeyValues = new CEntityKeyValues();
 	pKeyValues->SetString("lightcookie", "materials/effects/lightcookies/flashlight.vtex");
 
 	pLight->DispatchSpawn(pKeyValues);
@@ -882,7 +879,6 @@ CON_COMMAND_CHAT(test_target, "<name> [blocked flag] [...] - Test string targett
 
 	uint64 iBlockedFlags = NO_TARGET_BLOCKS;
 	for (int i = 1; i < args.ArgC(); i++)
-	{
 		if (!V_stricmp(args[i], "NO_RANDOM"))
 			iBlockedFlags |= NO_RANDOM;
 		else if (!V_stricmp(args[i], "NO_MULTIPLE"))
@@ -907,7 +903,6 @@ CON_COMMAND_CHAT(test_target, "<name> [blocked flag] [...] - Test string targett
 			iBlockedFlags |= NO_SPECTATOR;
 		else if (!V_stricmp(args[i], "NO_IMMUNITY"))
 			iBlockedFlags |= NO_IMMUNITY;
-	}
 
 	int iNumClients = 0;
 	int pSlots[MAXPLAYERS];
@@ -931,7 +926,7 @@ CON_COMMAND_CHAT(particle, "- Spawn a particle")
 	Vector vecAbsOrigin = player->GetPawn()->GetAbsOrigin();
 	vecAbsOrigin.z += 64.0f;
 
-	CParticleSystem *particle = CreateEntityByName<CParticleSystem>("info_particle_system");
+	CParticleSystem* particle = CreateEntityByName<CParticleSystem>("info_particle_system");
 
 	particle->m_bStartActive(true);
 	particle->m_iszEffectName(args[1]);
@@ -951,9 +946,9 @@ CON_COMMAND_CHAT(particle_kv, "- Spawn a particle but using keyvalues to spawn")
 	Vector vecAbsOrigin = player->GetPawn()->GetAbsOrigin();
 	vecAbsOrigin.z += 64.0f;
 
-	CParticleSystem *particle = CreateEntityByName<CParticleSystem>("info_particle_system");
+	CParticleSystem* particle = CreateEntityByName<CParticleSystem>("info_particle_system");
 
-	CEntityKeyValues *pKeyValues = new CEntityKeyValues();
+	CEntityKeyValues* pKeyValues = new CEntityKeyValues();
 
 	pKeyValues->SetString("effect_name", args[1]);
 	pKeyValues->SetBool("start_active", true);
@@ -981,7 +976,7 @@ CON_COMMAND_CHAT(emitsound, "- Emit a sound from the entity under crosshair")
 	if (!player)
 		return;
 
-	CBaseEntity *pEntity = UTIL_FindPickerEntity(player);
+	CBaseEntity* pEntity = UTIL_FindPickerEntity(player);
 
 	if (!pEntity)
 	{
@@ -1000,14 +995,14 @@ CON_COMMAND_CHAT(getstats, "- Get your stats")
 	if (!player)
 		return;
 
-	CSMatchStats_t *stats = &player->m_pActionTrackingServices->m_matchStats();
+	CSMatchStats_t* stats = &player->m_pActionTrackingServices->m_matchStats();
 
-	ClientPrint(player, HUD_PRINTCENTER, 
-		"Kills: %i\n"
-		"Deaths: %i\n"
-		"Assists: %i\n"
-		"Damage: %i"
-		, stats->m_iKills.Get(), stats->m_iDeaths.Get(), stats->m_iAssists.Get(), stats->m_iDamage.Get());
+	ClientPrint(player, HUD_PRINTCENTER,
+				"Kills: %i\n"
+				"Deaths: %i\n"
+				"Assists: %i\n"
+				"Damage: %i",
+				stats->m_iKills.Get(), stats->m_iDeaths.Get(), stats->m_iAssists.Get(), stats->m_iDamage.Get());
 
 	ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX "Kills: %d", stats->m_iKills.Get());
 	ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX "Deaths: %d", stats->m_iDeaths.Get());
