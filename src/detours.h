@@ -55,6 +55,10 @@ class CTraceFilter;
 class Vector;
 class QAngle;
 
+// Add callback functions to this map that wish to hook into Detour_CEntityIOOutput_FireOutputInternal
+// to make it more modular/cleaner than shoving everything into the detour (buttonwatch, entwatch, etc.)
+extern std::map<std::string, std::function<void(const CEntityIOOutput*, CEntityInstance*, CEntityInstance*, const CVariant*, float)>> mapIOFunctions;
+
 bool InitDetours(CGameConfig* gameConfig);
 void FlushAllDetours();
 bool SetupFireOutputInternalDetour();
