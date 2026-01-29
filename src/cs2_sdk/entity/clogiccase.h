@@ -26,6 +26,8 @@ class CLogicCase : public CBaseEntity
 {
 public:
 	DECLARE_SCHEMA_CLASS(CLogicCase)
+
+	SCHEMA_FIELD_POINTER(CUtlSymbolLarge, m_nCase)
 };
 
 class CGameUI : public CLogicCase

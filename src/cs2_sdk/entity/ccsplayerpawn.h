@@ -40,11 +40,11 @@ class CCSPlayerPawnBase : public CBasePlayerPawn
 {
 public:
 	DECLARE_SCHEMA_CLASS(CCSPlayerPawnBase);
-	SCHEMA_FIELD(QAngle, m_angEyeAngles)
 	SCHEMA_FIELD(CSPlayerState, m_iPlayerState)
 	SCHEMA_FIELD(float, m_flFlashDuration)
 	SCHEMA_FIELD(float, m_flFlashMaxAlpha)
 	SCHEMA_FIELD(CHandle<CCSPlayerController>, m_hOriginalController)
+	SCHEMA_FIELD(CCSPlayer_PingServices*, m_pPingServices)
 
 	CCSPlayerController* GetOriginalController()
 	{
@@ -53,7 +53,7 @@ public:
 
 	bool IsBot()
 	{
-		return m_fFlags() & FL_PAWN_FAKECLIENT;
+		return m_fFlags() & FL_BOT;
 	}
 };
 
@@ -69,9 +69,12 @@ public:
 	SCHEMA_FIELD(CCSBot*, m_pBot)
 	SCHEMA_FIELD(QAngle, m_aimPunchAngle)
 	SCHEMA_FIELD(QAngle, m_aimPunchAngleVel)
+	SCHEMA_FIELD(QAngle, m_angEyeAngles)
 
 	[[nodiscard]] CCSPlayer_CameraServices* GetCameraService()
 	{
 		return reinterpret_cast<CCSPlayer_CameraServices*>(m_pCameraServices());
 	}
+
+	void FixPlayerModelAnimations();
 };

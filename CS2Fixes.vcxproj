@@ -124,7 +124,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>protobuf/generated;src/utils;src/cs2_sdk;sdk/public;sdk/public/tier0;sdk/game/shared;sdk/game/server;sdk/public/tier1;sdk/public/mathlib;minhook/include;$(MMSOURCE112)/core;$(MMSOURCE112)/core/sourcehook;vendor/subhook;vendor/funchook/include;sdk/public/entity2;sdk/public/game/server;sdk/thirdparty/protobuf-3.21.8/src;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>build/cs2fixes.cs2/windows-x86_64;src/utils;src/cs2_sdk;sdk/public;sdk/public/tier0;sdk/game/shared;sdk/game/server;sdk/public/tier1;sdk/public/mathlib;minhook/include;$(MMSOURCE112)/core;$(MMSOURCE112)/core/sourcehook;$(MMSOURCE_DEV)/core;$(MMSOURCE_DEV)/core/sourcehook;vendor/subhook;vendor/funchook/include;sdk/public/entity2;sdk/public/game/server;sdk/thirdparty/protobuf-3.21.8/src;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <UndefinePreprocessorDefinitions>%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -151,7 +151,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>protobuf/generated;src/utils;src/cs2_sdk;sdk/public;sdk/public/tier0;sdk/game/shared;sdk/game/server;sdk/public/tier1;sdk/public/mathlib;minhook/include;$(MMSOURCE112)/core;$(MMSOURCE112)/core/sourcehook;vendor/subhook;vendor/funchook/include;sdk/public/entity2;sdk/public/game/server;sdk/thirdparty/protobuf-3.21.8/src;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>build/cs2fixes.cs2/windows-x86_64;src/utils;src/cs2_sdk;sdk/public;sdk/public/tier0;sdk/game/shared;sdk/game/server;sdk/public/tier1;sdk/public/mathlib;minhook/include;$(MMSOURCE112)/core;$(MMSOURCE112)/core/sourcehook;$(MMSOURCE_DEV)/core;$(MMSOURCE_DEV)/core/sourcehook;vendor/subhook;vendor/funchook/include;sdk/public/entity2;sdk/public/game/server;sdk/thirdparty/protobuf-3.21.8/src;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <UndefinePreprocessorDefinitions>%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -170,17 +170,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\buttonwatch.cpp" />
-    <ClCompile Include="protobuf\generated\cs_usercmd.pb.cc" />
-    <ClCompile Include="protobuf\generated\networkbasetypes.pb.cc" />
-    <ClCompile Include="protobuf\generated\network_connection.pb.cc" />
-    <ClCompile Include="protobuf\generated\usercmd.pb.cc" />
-    <ClCompile Include="protobuf\generated\usermessages.pb.cc" />
-    <ClCompile Include="protobuf\generated\cstrike15_gcmessages.pb.cc" />
-    <ClCompile Include="protobuf\generated\cstrike15_usermessages.pb.cc" />
-    <ClCompile Include="protobuf\generated\gcsdk_gcmessages.pb.cc" />
-    <ClCompile Include="protobuf\generated\engine_gcmessages.pb.cc" />
-    <ClCompile Include="protobuf\generated\netmessages.pb.cc" />
-    <ClCompile Include="protobuf\generated\steammessages.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\cs_usercmd.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\networkbasetypes.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\network_connection.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\usercmd.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\usermessages.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\cstrike15_gcmessages.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\cstrike15_usermessages.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\gcsdk_gcmessages.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\engine_gcmessages.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\netmessages.pb.cc" />
+    <ClCompile Include="build\cs2fixes.cs2\windows-x86_64\steammessages.pb.cc" />
     <ClCompile Include="sdk\entity2\entityidentity.cpp" />
     <ClCompile Include="sdk\entity2\entitykeyvalues.cpp" />
     <ClCompile Include="sdk\entity2\entitysystem.cpp" />
@@ -199,6 +199,7 @@
     <ClCompile Include="src\detours.cpp" />
     <ClCompile Include="src\discord.cpp" />
     <ClCompile Include="src\entities.cpp" />
+    <ClCompile Include="src\entwatch.cpp" />
     <ClCompile Include="src\events.cpp" />
     <ClCompile Include="src\gameconfig.cpp" />
     <ClCompile Include="src\gamesystem.cpp" />
@@ -212,6 +213,7 @@
     <ClCompile Include="src\playermanager.cpp" />
     <ClCompile Include="src\playerskin.cpp" />
     <ClCompile Include="src\saysound.cpp" />
+    <ClCompile Include="src\topdefender.cpp" />
     <ClCompile Include="src\user_preferences.cpp" />
     <ClCompile Include="src\votemanager.cpp" />
     <ClCompile Include="src\vsbots.cpp" />
@@ -222,6 +224,12 @@
     <ClCompile Include="src\utils\entity.cpp" />
     <ClCompile Include="src\utils\plat_unix.cpp" />
     <ClCompile Include="src\utils\plat_win.cpp" />
+    <ClCompile Include="src\utils\weapon.cpp" />
+    <ClCompile Include="src\utils\hud_manager.cpp" />
+    <ClCompile Include="src\utils\utils.cpp" />
+    <ClCompile Include="src\cs2_sdk\entity\services.cpp" />
+    <ClCompile Include="src\cs2_sdk\entity\ccsplayerpawn.cpp" />
+    <ClCompile Include="src\cs2_sdk\entity\cbasemodelentity.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\buttonwatch.h" />
@@ -229,11 +237,12 @@
     <ClInclude Include="src\commands.h" />
     <ClInclude Include="src\common.h" />
     <ClInclude Include="src\cs2fixes.h" />
-    <ClInclude Include="src\cs2_sdk\cschemasystem.h" />
+    <ClInclude Include="src\cs2_sdk\entity\cbasebutton.h" />
     <ClInclude Include="src\cs2_sdk\entity\cbaseentity.h" />
     <ClInclude Include="src\cs2_sdk\entity\cbasemodelentity.h" />
     <ClInclude Include="src\cs2_sdk\entity\cbaseplayercontroller.h" />
     <ClInclude Include="src\cs2_sdk\entity\cbaseplayerpawn.h" />
+    <ClInclude Include="src\cs2_sdk\entity\cbasetoggle.h" />
     <ClInclude Include="src\cs2_sdk\entity\cbasetrigger.h" />
     <ClInclude Include="src\cs2_sdk\entity\ccollisionproperty.h" />
     <ClInclude Include="src\cs2_sdk\entity\ccsbot.h" />
@@ -245,9 +254,11 @@
     <ClInclude Include="src\cs2_sdk\entity\cgameplayerequip.h" />
     <ClInclude Include="src\cs2_sdk\entity\cgamerules.h" />
     <ClInclude Include="src\cs2_sdk\entity\clogiccase.h" />
+    <ClInclude Include="src\cs2_sdk\entity\cmathcounter.h" />
     <ClInclude Include="src\cs2_sdk\entity\cparticlesystem.h" />
     <ClInclude Include="src\cs2_sdk\entity\cphysthruster.h" />
     <ClInclude Include="src\cs2_sdk\entity\cpointviewcontrol.h" />
+    <ClInclude Include="src\cs2_sdk\entity\cpointworldtext.h" />
     <ClInclude Include="src\cs2_sdk\entity\ctakedamageinfo.h" />
     <ClInclude Include="src\cs2_sdk\entity\cteam.h" />
     <ClInclude Include="src\cs2_sdk\entity\ctriggerpush.h" />
@@ -256,6 +267,8 @@
     <ClInclude Include="src\cs2_sdk\entity\globaltypes.h" />
     <ClInclude Include="src\cs2_sdk\entity\lights.h" />
     <ClInclude Include="src\cs2_sdk\entity\services.h" />
+    <ClInclude Include="src\cs2_sdk\entity\cpointhurt.h" />
+    <ClInclude Include="src\cs2_sdk\entity\cpointorient.h" />
     <ClInclude Include="src\cs2_sdk\schema.h" />
     <ClInclude Include="src\cs2_sdk\entityio.h" />
     <ClInclude Include="src\cdetour.h" />
@@ -265,6 +278,7 @@
     <ClInclude Include="src\detours.h" />
     <ClInclude Include="src\discord.h" />
     <ClInclude Include="src\entities.h" />
+    <ClInclude Include="src\entwatch.h" />
     <ClInclude Include="src\eventlistener.h" />
     <ClInclude Include="src\gamesystem.h" />
     <ClInclude Include="src\gameconfig.h" />
@@ -280,6 +294,9 @@
     <ClInclude Include="src\recipientfilters.h" />
     <ClInclude Include="src\saysound.h" />
     <ClInclude Include="src\serversideclient.h" />
+    <ClInclude Include="src\cs2_sdk\serversideclient.h" />
+    <ClInclude Include="src\cs2_sdk\clientframe.h" />
+    <ClInclude Include="src\topdefender.h" />
     <ClInclude Include="src\utils\plat_win.h" />
     <ClInclude Include="src\votemanager.h" />
     <ClInclude Include="src\map_votes.h" />
@@ -292,6 +309,11 @@
     <ClInclude Include="src\utils\module.h" />
     <ClInclude Include="src\utils\plat.h" />
     <ClInclude Include="src\utils\virtual.h" />
+    <ClInclude Include="src\cs2_sdk\netmessages.h" />
+    <ClInclude Include="src\utils\weapon.h" />
+    <ClInclude Include="src\utils\version_gen_placeholder.h" />
+    <ClInclude Include="src\utils\hud_manager.h" />
+    <ClInclude Include="src\utils\utils.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="configs\vsbots\botnames.txt" />

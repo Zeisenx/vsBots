@@ -19,19 +19,44 @@
 
 #pragma once
 
+#include "engine/igameeventsystem.h"
+#include "entity/cgamerules.h"
+#include "gamesystems/spawngroup_manager.h"
 #include "igameevents.h"
 #include "networksystem/inetworkserializer.h"
+#include "public/ics2fixes.h"
+#include "steam/isteamhttp.h"
 #include <ISmmPlugin.h>
 #include <iplayerinfo.h>
 #include <iserver.h>
 #include <sh_vector.h>
 
-struct CTakeDamageInfoContainer;
+#ifdef AMBUILD
+	#include "version_gen.h"
+#else
+	#include "version_gen_placeholder.h"
+#endif
+
 class CCSPlayer_MovementServices;
 class CServerSideClient;
 struct TouchLinked_t;
+class CCSPlayer_WeaponServices;
+class CBasePlayerWeapon;
 
-class CS2Fixes : public ISmmPlugin, public IMetamodListener
+extern IGameEventSystem* g_gameEventSystem;
+extern IGameEventManager2* g_gameEventManager;
+extern CGameEntitySystem* g_pEntitySystem;
+extern IVEngineServer2* g_pEngineServer2;
+extern ISteamHTTP* g_http;
+extern CSteamGameServerAPIContext g_steamAPI;
+extern CCSGameRules* g_pGameRules;
+extern CSpawnGroupMgrGameSystem* g_pSpawnGroupMgr;
+extern double g_flUniversalTime;
+extern INetworkGameServer* GetNetworkGameServer();
+extern CGlobalVars* GetGlobals();
+extern CConVar<bool> g_cvarDropMapWeapons;
+
+class CS2Fixes : public ISmmPlugin, public IMetamodListener, public ICS2Fixes
 {
 public:
 	bool Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool late);
@@ -61,14 +86,17 @@ public: // hooks
 	bool Hook_ClientConnect(CPlayerSlot slot, const char* pszName, uint64 xuid, const char* pszNetworkID, bool unk1, CBufferString* pRejectReason);
 	void Hook_ClientCommand(CPlayerSlot nSlot, const CCommand& _cmd);
 	void Hook_CheckTransmit(CCheckTransmitInfo** ppInfoList, int infoCount, CBitVec<16384>& unionTransmitEdicts,
-							const Entity2Networkable_t** pNetworkables, const uint16* pEntityIndicies, int nEntities, bool bEnablePVSBits);
-	void Hook_DispatchConCommand(ConCommandHandle cmd, const CCommandContext& ctx, const CCommand& args);
+							CBitVec<16384>&, const Entity2Networkable_t** pNetworkables, const uint16* pEntityIndicies, int nEntities);
+	void Hook_DispatchConCommand(ConCommandRef cmd, const CCommandContext& ctx, const CCommand& args);
 	void Hook_CGamePlayerEquipUse(class InputData_t*);
+	void Hook_CGamePlayerEquipPrecache(CEntityPrecacheContext*);
+	void Hook_CTriggerGravityPrecache(CEntityPrecacheContext* param);
+	void Hook_CTriggerGravityEndTouch(CBaseEntity* pOther);
 	void Hook_StartupServer(const GameSessionConfiguration_t& config, ISource2WorldSession*, const char*);
 	void Hook_ApplyGameSettings(KeyValues* pKV);
 	void Hook_CreateWorkshopMapGroup(const char* name, const CUtlStringList& mapList);
 	void Hook_GoToIntermission(bool bAbortedMatch);
-	bool Hook_OnTakeDamage_Alive(CTakeDamageInfoContainer* pInfoContainer);
+	bool Hook_OnTakeDamage_Alive(CTakeDamageResult* pDamageResult);
 	void Hook_PhysicsTouchShuffle(CUtlVector<TouchLinked_t>* pList, bool unknown);
 #ifdef PLATFORM_WINDOWS
 	Vector* Hook_GetEyePosition(Vector*);
@@ -78,17 +106,26 @@ public: // hooks
 	QAngle Hook_GetEyeAngles();
 #endif
 	void Hook_CheckMovingGround(double frametime);
+	void Hook_DropWeaponPost(CBasePlayerWeapon* pWeapon, Vector* pVecTarget, Vector* pVelocity);
 	int Hook_LoadEventsFromFile(const char* filename, bool bSearchAll);
+	void Hook_SetGameSpawnGroupMgr(IGameSpawnGroupMgr* pSpawnGroupMgr);
+
+public: // MetaMod API
+	void* OnMetamodQuery(const char* iface, int* ret);
+	std::uint64_t GetAdminFlags(std::uint64_t iSteam64ID) const override;
+	bool SetAdminFlags(std::uint64_t iSteam64ID, std::uint64_t iFlags) override;
+	int GetAdminImmunity(std::uint64_t iSteam64ID) const override;
+	bool SetAdminImmunity(std::uint64_t iSteam64ID, std::uint32_t iImmunity) override;
 
 public:
-	const char* GetAuthor();
-	const char* GetName();
-	const char* GetDescription();
-	const char* GetURL();
-	const char* GetLicense();
-	const char* GetVersion();
-	const char* GetDate();
-	const char* GetLogTag();
+	const char* GetAuthor() { return PLUGIN_AUTHOR; }
+	const char* GetName() { return PLUGIN_DISPLAY_NAME; }
+	const char* GetDescription() { return PLUGIN_DESCRIPTION; }
+	const char* GetURL() { return PLUGIN_URL; }
+	const char* GetLicense() { return PLUGIN_LICENSE; }
+	const char* GetVersion() { return PLUGIN_FULL_VERSION; }
+	const char* GetDate() { return __DATE__; }
+	const char* GetLogTag() { return PLUGIN_LOGTAG; }
 };
 
 extern CS2Fixes g_CS2Fixes;

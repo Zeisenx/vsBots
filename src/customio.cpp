@@ -1,4 +1,4 @@
-/**
+﻿/**
  * =============================================================================
  * CS2Fixes
  * Copyright (C) 2023-2025 Source2ZE
@@ -23,7 +23,9 @@
 #include "entity/cbaseentity.h"
 #include "entity/ccsplayercontroller.h"
 #include "entity/cenventitymaker.h"
+#include "entity/clogiccase.h"
 #include "entity/cphysthruster.h"
+#include "entity/cpointhurt.h"
 
 #include "ctimer.h"
 
@@ -31,25 +33,26 @@
 #include <string>
 #include <vector>
 
-extern CGlobalVars* gpGlobals;
-
 struct AddOutputKey_t
 {
-	AddOutputKey_t(const char* pName, int32_t parts) :
+	AddOutputKey_t(const char* pName, int32_t parts, bool prefix = false) :
 		m_pName(pName)
 	{
 		m_nLength = strlen(pName);
 		m_nParts = parts;
+		m_bPrefix = prefix;
 	}
 
 	AddOutputKey_t(const AddOutputKey_t& other) :
 		m_pName(other.m_pName),
 		m_nLength(other.m_nLength),
-		m_nParts(other.m_nParts) {}
+		m_nParts(other.m_nParts),
+		m_bPrefix(other.m_bPrefix) {}
 
 	const char* m_pName;
 	size_t m_nLength;
 	int32_t m_nParts;
+	bool m_bPrefix;
 };
 
 using AddOutputHandler_t = void (*)(CBaseEntity* pInstance,
@@ -264,7 +267,7 @@ static void AddOutputCustom_Gravity(CBaseEntity* pInstance,
 {
 	const auto value = Q_atof(vecArgs[1].c_str());
 
-	pInstance->m_flGravityScale = value;
+	pInstance->SetGravityScale(value);
 
 #ifdef _DEBUG
 	Message("Set gravity to %f for %s\n", value, pInstance->GetName());
@@ -341,6 +344,92 @@ static void AddOutputCustom_RunSpeed(CBaseEntity* pInstance,
 #endif
 }
 
+static void AddOutputCustom_Damage(CBaseEntity* pInstance,
+								   CEntityInstance* pActivator,
+								   CEntityInstance* pCaller,
+								   const std::vector<std::string>& vecArgs)
+{
+	CPointHurt* pEntity = reinterpret_cast<CPointHurt*>(pInstance);
+
+	if (!V_strcasecmp(pEntity->GetClassname(), "point_hurt"))
+	{
+		const int value = clamp(Q_atoi(vecArgs[1].c_str()), 0, INT_MAX);
+		pEntity->m_nDamage(value);
+
+#ifdef _DEBUG
+		Message("Set damage to %d for %s\n", value, pEntity->GetName());
+#endif
+	}
+}
+
+static void AddOutputCustom_DamageType(CBaseEntity* pInstance,
+									   CEntityInstance* pActivator,
+									   CEntityInstance* pCaller,
+									   const std::vector<std::string>& vecArgs)
+{
+	CPointHurt* pEntity = reinterpret_cast<CPointHurt*>(pInstance);
+
+	if (!V_strcasecmp(pEntity->GetClassname(), "point_hurt"))
+	{
+		const int value = clamp(Q_atoi(vecArgs[1].c_str()), 0, INT_MAX);
+		pEntity->m_bitsDamageType(value);
+
+#ifdef _DEBUG
+		Message("Set damagetype to %d for %s\n", value, pEntity->GetName());
+#endif
+	}
+}
+
+static void AddOutputCustom_DamageRadius(CBaseEntity* pInstance,
+										 CEntityInstance* pActivator,
+										 CEntityInstance* pCaller,
+										 const std::vector<std::string>& vecArgs)
+{
+	CPointHurt* pEntity = reinterpret_cast<CPointHurt*>(pInstance);
+
+	if (!V_strcasecmp(pEntity->GetClassname(), "point_hurt"))
+	{
+		const float value = Q_atof(vecArgs[1].c_str());
+		pEntity->m_flRadius(value);
+
+#ifdef _DEBUG
+		Message("Set damageradius to %f for %s\n", value, pEntity->GetName());
+#endif
+	}
+}
+
+static void AddOutputCustom_Case(CBaseEntity* pInstance,
+								 CEntityInstance* pActivator,
+								 CEntityInstance* pCaller,
+								 const std::vector<std::string>& vecArgs)
+{
+	CLogicCase* pEntity = reinterpret_cast<CLogicCase*>(pInstance);
+
+	if (!V_strcasecmp(pEntity->GetClassname(), "logic_case"))
+	{
+		if (vecArgs[0].length() != 6)
+		{
+			Message("%s is an invalid KeyValue input, size must be 6\n", vecArgs[0].c_str());
+			return;
+		}
+
+		const int iCase = V_StringToInt32(vecArgs[0].substr(4).c_str(), -1);
+
+		if (iCase < 1 || iCase > 32)
+		{
+			Message("%s is an invalid KeyValue input, case number must be between 01-32\n", vecArgs[0].c_str());
+			return;
+		}
+
+		const CUtlSymbolLarge pValue = g_pEntitySystem->AllocPooledString(vecArgs[1].c_str());
+		pEntity->m_nCase()[iCase - 1] = pValue;
+
+#ifdef _DEBUG
+		Message("Set %s to %s for %s\n", vecArgs[0].c_str(), pValue.String(), pInstance->GetName());
+#endif
+	}
+}
+
 const std::vector<AddOutputInfo_t> s_AddOutputHandlers = {
 	{{"targetname", 2},		AddOutputCustom_Targetname	  },
 	{{"origin", 4},			AddOutputCustom_Origin		  },
@@ -359,6 +448,10 @@ const std::vector<AddOutputInfo_t> s_AddOutputHandlers = {
 	{{"friction", 2},		  AddOutputCustom_Friction	  },
 	{{"speed", 2},		   AddOutputCustom_Speed			},
 	{{"runspeed", 2},		  AddOutputCustom_RunSpeed	  },
+	{{"damage", 2},			AddOutputCustom_Damage		  },
+	{{"damagetype", 2},		AddOutputCustom_DamageType	  },
+	{{"damageradius", 2},	  AddOutputCustom_DamageRadius  },
+	{{"Case", 2, true},		AddOutputCustom_Case			},
 };
 
 inline std::vector<std::string> StringSplit(const char* str, const char* delimiter)
@@ -382,14 +475,15 @@ bool CustomIO_HandleInput(CEntityInstance* pInstance,
 						  CEntityInstance* pActivator,
 						  CEntityInstance* pCaller)
 {
+	const auto paramSplit = StringSplit(param, " ");
+
 	for (auto& [input, handler] : s_AddOutputHandlers)
 	{
-		if (V_strncasecmp(param, input.m_pName, input.m_nLength) == 0)
+		if (!V_strcasecmp(paramSplit[0].c_str(), input.m_pName) || (input.m_bPrefix && !V_strncasecmp(paramSplit[0].c_str(), input.m_pName, input.m_nLength)))
 		{
-			if (const auto split = StringSplit(param, " ");
-				split.size() == input.m_nParts)
+			if (paramSplit.size() == input.m_nParts)
 			{
-				handler(reinterpret_cast<CBaseEntity*>(pInstance), pActivator, pCaller, split);
+				handler(reinterpret_cast<CBaseEntity*>(pInstance), pActivator, pCaller, paramSplit);
 				return true;
 			}
 
@@ -400,27 +494,23 @@ bool CustomIO_HandleInput(CEntityInstance* pInstance,
 	return false;
 }
 
-std::string g_sBurnParticle = "particles/burning_fx/burning_character_b.vpcf";
-FAKE_STRING_CVAR(cs2f_burn_particle, "The particle to use for burning entities", g_sBurnParticle, false);
-
-float g_flBurnDamage = 1.f;
-FAKE_FLOAT_CVAR(cs2f_burn_damage, "The amount of each burn damage ticks", g_flBurnDamage, 1.f, false);
-
-float g_flBurnSlowdown = 0.6f;
-FAKE_FLOAT_CVAR(cs2f_burn_slowdown, "The slowdown of each burn damage tick as a multiplier of base speed", g_flBurnSlowdown, 0.6f, false);
-
-float g_flBurnInterval = 0.3f;
-FAKE_FLOAT_CVAR(cs2f_burn_interval, "The interval between burn damage ticks", g_flBurnInterval, 0.3f, false);
+CConVar<CUtlString> g_cvarBurnParticle("cs2f_burn_particle", FCVAR_NONE, "The particle to use for burning entities", "particles/cs2fixes/napalm_fire.vpcf");
+CConVar<float> g_cvarBurnDamage("cs2f_burn_damage", FCVAR_NONE, "The amount of each burn damage ticks", 1.0f, true, 0.0f, false, 0.0f);
+CConVar<float> g_cvarBurnSlowdown("cs2f_burn_slowdown", FCVAR_NONE, "The slowdown of each burn damage tick as a multiplier of base speed", 0.6f, true, 0.0f, true, 1.0f);
+CConVar<float> g_cvarBurnInterval("cs2f_burn_interval", FCVAR_NONE, "The interval between burn damage ticks", 0.3f, true, 0.0f, false, 0.0f);
 
 bool IgnitePawn(CCSPlayerPawn* pPawn, float flDuration, CBaseEntity* pInflictor, CBaseEntity* pAttacker, CBaseEntity* pAbility, DamageTypes_t nDamageType)
 {
+	if (!GetGlobals())
+		return false;
+
 	auto pParticleEnt = reinterpret_cast<CParticleSystem*>(pPawn->m_hEffectEntity().Get());
 
 	// This guy is already burning, don't ignite again
 	if (pParticleEnt)
 	{
 		// Override the end time instead of just adding to it so players who get a ton of ignite inputs don't burn forever
-		pParticleEnt->m_flDissolveStartTime = gpGlobals->curtime + flDuration;
+		pParticleEnt->m_flDissolveStartTime = GetGlobals()->curtime + flDuration;
 		return true;
 	}
 
@@ -429,9 +519,9 @@ bool IgnitePawn(CCSPlayerPawn* pPawn, float flDuration, CBaseEntity* pInflictor,
 	pParticleEnt = CreateEntityByName<CParticleSystem>("info_particle_system");
 
 	pParticleEnt->m_bStartActive(true);
-	pParticleEnt->m_iszEffectName(g_sBurnParticle.c_str());
+	pParticleEnt->m_iszEffectName(g_cvarBurnParticle.Get().String());
 	pParticleEnt->m_hControlPointEnts[0] = pPawn;
-	pParticleEnt->m_flDissolveStartTime = gpGlobals->curtime + flDuration; // Store the end time in the particle itself so we can increment if needed
+	pParticleEnt->m_flDissolveStartTime = GetGlobals()->curtime + flDuration; // Store the end time in the particle itself so we can increment if needed
 	pParticleEnt->Teleport(&vecOrigin, nullptr, nullptr);
 
 	pParticleEnt->DispatchSpawn();
@@ -445,10 +535,10 @@ bool IgnitePawn(CCSPlayerPawn* pPawn, float flDuration, CBaseEntity* pInflictor,
 	CHandle<CBaseEntity> hAttacker(pAttacker);
 	CHandle<CBaseEntity> hAbility(pAbility);
 
-	new CTimer(0.f, false, false, [hPawn, hInflictor, hAttacker, hAbility, nDamageType]() {
+	CTimer::Create(0.f, TIMERFLAG_MAP | TIMERFLAG_ROUND, [hPawn, hInflictor, hAttacker, hAbility, nDamageType]() {
 		CCSPlayerPawn* pPawn = hPawn.Get();
 
-		if (!pPawn)
+		if (!pPawn || !GetGlobals())
 			return -1.f;
 
 		const auto pParticleEnt = reinterpret_cast<CParticleSystem*>(pPawn->m_hEffectEntity().Get());
@@ -463,7 +553,7 @@ bool IgnitePawn(CCSPlayerPawn* pPawn, float flDuration, CBaseEntity* pInflictor,
 			return -1.f;
 		}
 
-		if (pParticleEnt->m_flDissolveStartTime() <= gpGlobals->curtime || !pPawn->IsAlive())
+		if (pParticleEnt->m_flDissolveStartTime() <= GetGlobals()->curtime || !pPawn->IsAlive())
 		{
 			pParticleEnt->AcceptInput("Stop");
 			UTIL_AddEntityIOEvent(pParticleEnt, "Kill"); // Kill on the next frame
@@ -471,7 +561,7 @@ bool IgnitePawn(CCSPlayerPawn* pPawn, float flDuration, CBaseEntity* pInflictor,
 			return -1.f;
 		}
 
-		CTakeDamageInfo info(hInflictor, hAttacker, hAbility, g_flBurnDamage, nDamageType);
+		CTakeDamageInfo info(hInflictor, hAttacker, hAbility, g_cvarBurnDamage.Get(), nDamageType);
 
 		// Damage doesn't apply if the inflictor is null
 		if (!hInflictor.Get())
@@ -479,9 +569,9 @@ bool IgnitePawn(CCSPlayerPawn* pPawn, float flDuration, CBaseEntity* pInflictor,
 
 		pPawn->TakeDamage(info);
 
-		pPawn->m_flVelocityModifier = g_flBurnSlowdown;
+		pPawn->m_flVelocityModifier = g_cvarBurnSlowdown.Get();
 
-		return g_flBurnInterval;
+		return g_cvarBurnInterval.Get();
 	});
 
 	return true;

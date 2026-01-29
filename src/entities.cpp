@@ -1,4 +1,4 @@
-/**
+﻿/**
  * =============================================================================
  * CS2Fixes
  * Copyright (C) 2023-2025 Source2ZE
@@ -18,9 +18,9 @@
  */
 
 #include "entities.h"
-
 #include "ctimer.h"
 #include "entity.h"
+
 #include "entity/cbaseplayercontroller.h"
 #include "entity/ccsplayercontroller.h"
 #include "entity/ccsplayerpawn.h"
@@ -29,20 +29,24 @@
 #include "entity/clogiccase.h"
 #include "entity/cpointviewcontrol.h"
 
+#include <unordered_map>
+#include <unordered_set>
+
 // #define ENTITY_HANDLER_ASSERTION
 
-extern CCSGameRules* g_pGameRules;
+static constexpr uint32_t ENTITY_MURMURHASH_SEED = 0x97984357;
+static constexpr uint32_t ENTITY_UNIQUE_INVALID = ~0u;
 
-class InputData_t
+static uint32_t GetEntityUnique(CBaseEntity* pEntity)
 {
-public:
-	CBaseEntity* pActivator;
-	CBaseEntity* pCaller;
-	variant_t value;
-	int nOutputID;
-};
+	const auto& sUniqueHammerID = pEntity->m_sUniqueHammerID();
+	if (sUniqueHammerID.IsEmpty())
+		return ENTITY_UNIQUE_INVALID;
 
-inline bool StripPlayer(CCSPlayerPawn* pPawn)
+	return MurmurHash2LowerCase(sUniqueHammerID.Get(), ENTITY_MURMURHASH_SEED);
+}
+
+static bool StripPlayer(CCSPlayerPawn* pPawn)
 {
 	const auto pItemServices = pPawn->m_pItemServices();
 
@@ -54,12 +58,44 @@ inline bool StripPlayer(CCSPlayerPawn* pPawn)
 	return true;
 }
 
+static void StripPlayer(CCSPlayerPawn* pPawn, const std::unordered_set<uint32_t>& slots)
+{
+	const auto pWeaponService = pPawn->m_pWeaponServices();
+	if (!pWeaponService)
+		return;
+
+	CUtlVector<CHandle<CBasePlayerWeapon>>* weapons = pWeaponService->m_hMyWeapons();
+	std::vector<CBasePlayerWeapon*> vecWeaponsToRemove;
+
+	FOR_EACH_VEC(*weapons, i)
+	{
+		CBasePlayerWeapon* weapon = (*weapons)[i].Get();
+
+		if (!weapon)
+			continue;
+
+		const auto slot = weapon->GetWeaponVData()->m_GearSlot();
+
+		if (slots.contains(slot))
+		{
+			// Queue for removal after, don't modify this vector while we're iterating it
+			vecWeaponsToRemove.push_back(weapon);
+		}
+	}
+
+	for (CBasePlayerWeapon* pWeapon : vecWeaponsToRemove)
+	{
+		pWeaponService->DropWeapon(pWeapon);
+		pWeapon->Remove();
+	}
+}
+
 // Must be called in GameFramePre
-inline void DelayInput(CBaseEntity* pCaller, const char* input, const char* param = "")
+static void DelayInput(CBaseEntity* pCaller, const char* input, const char* param = "")
 {
 	const auto eh = pCaller->GetHandle();
 
-	new CTimer(0.f, false, false, [eh, input, param]() {
+	CTimer::Create(0.f, TIMERFLAG_MAP | TIMERFLAG_ROUND, [eh, input, param]() {
 		if (const auto entity = reinterpret_cast<CBaseEntity*>(eh.Get()))
 			entity->AcceptInput(input, param, nullptr, entity);
 
@@ -68,12 +104,12 @@ inline void DelayInput(CBaseEntity* pCaller, const char* input, const char* para
 }
 
 // Must be called in GameFramePre
-inline void DelayInput(CBaseEntity* pCaller, CBaseEntity* pActivator, const char* input, const char* param = "")
+static void DelayInput(CBaseEntity* pCaller, CBaseEntity* pActivator, const char* input, const char* param = "")
 {
 	const auto eh = pCaller->GetHandle();
 	const auto ph = pActivator->GetHandle();
 
-	new CTimer(0.f, false, false, [eh, ph, input, param]() {
+	CTimer::Create(0.f, TIMERFLAG_MAP | TIMERFLAG_ROUND, [eh, ph, input, param]() {
 		const auto player = reinterpret_cast<CBaseEntity*>(ph.Get());
 		if (const auto entity = reinterpret_cast<CBaseEntity*>(eh.Get()))
 			entity->AcceptInput(input, param, player, entity);
@@ -82,8 +118,55 @@ inline void DelayInput(CBaseEntity* pCaller, CBaseEntity* pActivator, const char
 	});
 }
 
+namespace CTriggerGravityHandler
+{
+	static std::unordered_map<uint32_t, float> s_gravityMap;
+
+	void OnPrecache(CBaseEntity* pEntity, const CEntityKeyValues* kv)
+	{
+		const auto pGravity = kv->GetKeyValue("gravity");
+		const auto pHammerId = kv->GetKeyValue("hammerUniqueId");
+		if (!pGravity || !pHammerId)
+			return;
+
+		const auto flGravity = pGravity->GetFloat();
+		const auto hEntity = MurmurHash2LowerCase(pHammerId->GetString(), ENTITY_MURMURHASH_SEED);
+
+		s_gravityMap[hEntity] = flGravity;
+	}
+
+	bool GravityTouching(CBaseEntity* pEntity, CBaseEntity* pOther)
+	{
+		const auto hEntity = GetEntityUnique(pEntity);
+		if (hEntity == ENTITY_UNIQUE_INVALID)
+			return false;
+
+		const auto gravity = s_gravityMap.find(hEntity);
+		if (gravity == s_gravityMap.end())
+			return false;
+
+		if (pOther->IsPawn() && pOther->IsAlive())
+			pOther->SetGravityScale(gravity->second);
+
+		return true;
+	}
+
+	void OnEndTouch(CBaseEntity* pEntity, CBaseEntity* pOther)
+	{
+		if (pOther->IsPawn())
+			pOther->SetGravityScale(1);
+	}
+
+	static void Shutdown()
+	{
+		s_gravityMap.clear();
+	}
+} // namespace CTriggerGravityHandler
+
 namespace CGamePlayerEquipHandler
 {
+	static std::unordered_map<uint32_t, std::unordered_set<uint32_t>> s_PlayerEquipMap;
+
 	void Use(CGamePlayerEquip* pEntity, InputData_t* pInput)
 	{
 		const auto pCaller = pInput->pActivator;
@@ -97,12 +180,13 @@ namespace CGamePlayerEquipHandler
 
 		if (flags & CGamePlayerEquip::SF_PLAYEREQUIP_STRIPFIRST)
 		{
-			if (!StripPlayer(pPawn))
-				return;
+			StripPlayer(pPawn);
 		}
-		else if (flags & ::CGamePlayerEquip::SF_PLAYEREQUIP_ONLYSTRIPSAME)
+		else if (flags & CGamePlayerEquip::SF_PLAYEREQUIP_ONLYSTRIPSAME)
 		{
-			// TODO support strip same flags
+			const auto& pair = s_PlayerEquipMap.find(GetEntityUnique(pEntity));
+			if (pair != s_PlayerEquipMap.end() && !pair->second.empty())
+				StripPlayer(pPawn, pair->second);
 		}
 	}
 
@@ -119,7 +203,14 @@ namespace CGamePlayerEquipHandler
 		}
 		else if (flags & CGamePlayerEquip::SF_PLAYEREQUIP_ONLYSTRIPSAME)
 		{
-			// TODO support strip same flags
+			const auto& pair = s_PlayerEquipMap.find(GetEntityUnique(pEntity));
+			if (pair != s_PlayerEquipMap.end() && !pair->second.empty())
+			{
+				CCSPlayerPawn* pPawn = nullptr;
+				while ((pPawn = reinterpret_cast<CCSPlayerPawn*>(UTIL_FindEntityByClassname(pPawn, "player"))) != nullptr)
+					if (pPawn->IsPawn() && pPawn->IsAlive())
+						StripPlayer(pPawn, pair->second);
+			}
 		}
 	}
 
@@ -141,7 +232,9 @@ namespace CGamePlayerEquipHandler
 		}
 		else if (flags & CGamePlayerEquip::SF_PLAYEREQUIP_ONLYSTRIPSAME)
 		{
-			// TODO
+			const auto& pair = s_PlayerEquipMap.find(GetEntityUnique(pEntity));
+			if (pair != s_PlayerEquipMap.end() && !pair->second.empty())
+				StripPlayer(pPawn, pair->second);
 		}
 
 		const auto pItemServices = pPawn->m_pItemServices();
@@ -151,12 +244,45 @@ namespace CGamePlayerEquipHandler
 
 		if (pszWeapon && V_strcmp(pszWeapon, "(null)"))
 		{
-			pItemServices->GiveNamedItem(pszWeapon);
+			pItemServices->GiveNamedItemAws(pszWeapon);
 			// Don't execute game function (we fixed string param)
 			return false;
 		}
 
 		return true;
+	}
+
+	void OnPrecache(CGamePlayerEquip* pEntity, const CEntityKeyValues* kv)
+	{
+		const auto pHammerId = kv->GetKeyValue("hammerUniqueId");
+		if (!pHammerId)
+			return;
+
+		auto list = std::unordered_set<uint32_t>();
+
+		for (auto i = 0; i < CGamePlayerEquip::MAX_EQUIPMENTS_SIZE; i++)
+		{
+			char key[32];
+			snprintf(key, sizeof(key), "weapon%d", i);
+			const auto val = kv->GetString(key);
+			if (val && strlen(val) > 1)
+			{
+				const auto slot = CCSPlayer_ItemServices::GetItemGearSlot(val);
+				if (slot != GEAR_SLOT_INVALID && slot != GEAR_SLOT_UTILITY)
+					list.emplace(slot);
+			}
+		}
+
+		if (!list.empty())
+		{
+			const auto hEntity = MurmurHash2LowerCase(pHammerId->GetString(), ENTITY_MURMURHASH_SEED);
+			s_PlayerEquipMap[hEntity] = list;
+		}
+	}
+
+	static void Shutdown()
+	{
+		s_PlayerEquipMap.clear();
 	}
 } // namespace CGamePlayerEquipHandler
 
@@ -183,10 +309,10 @@ namespace CGameUIHandler
 
 	static std::unordered_map<uint32, CGameUIState> s_repository;
 
-	inline uint64 GetButtons(CPlayer_MovementServices* pMovement)
+	inline uint64 GetButtons(CPlayer_MovementServices* pMovement, int key = 0)
 	{
 		const auto buttonStates = pMovement->m_nButtons().m_pButtonStates();
-		const auto buttons = buttonStates[0];
+		const auto buttons = buttonStates[key];
 		return buttons;
 	}
 
@@ -198,8 +324,9 @@ namespace CGameUIHandler
 
 		const auto spawnFlags = pEntity->m_spawnflags();
 		const auto buttons = GetButtons(pMovement);
+		const auto scrolls = GetButtons(pMovement, 2);
 
-		if ((spawnFlags & CGameUI::SF_GAMEUI_JUMP_DEACTIVATE) != 0 && (buttons & IN_JUMP) != 0)
+		if (((spawnFlags & CGameUI::SF_GAMEUI_JUMP_DEACTIVATE) != 0) && ((buttons & IN_JUMP) != 0 || (scrolls & IN_JUMP) != 0))
 		{
 			DelayInput(pEntity, pPlayer, "Deactivate");
 			return BAD_BUTTONS;
@@ -511,10 +638,10 @@ namespace CPointViewControlHandler
 	{
 		const auto key = pEntity->GetHandle().ToInt();
 		const auto it = s_repository.find(key);
-		if (it == s_repository.end())
+		if (it == s_repository.end() || !GetGlobals())
 			return false;
 
-		for (auto i = 0; i < gpGlobals->maxClients; i++)
+		for (auto i = 0; i < GetGlobals()->maxClients; i++)
 		{
 			const auto pController = CCSPlayerController::FromSlot(i);
 			if (!pController || !pController->IsConnected() || pController->IsBot() || pController->m_bIsHLTV())
@@ -688,4 +815,10 @@ void EntityHandler_OnRoundRestart()
 void EntityHandler_OnEntitySpawned(CBaseEntity* pEntity)
 {
 	CPointViewControlHandler::OnCreated(pEntity);
+}
+
+void EntityHandler_OnLevelInit()
+{
+	CTriggerGravityHandler::Shutdown();
+	CGamePlayerEquipHandler::Shutdown();
 }

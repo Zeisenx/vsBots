@@ -20,6 +20,7 @@
 #include "user_preferences.h"
 #include "commands.h"
 #include "common.h"
+#include "entwatch.h"
 #include "httpmanager.h"
 #include "playermanager.h"
 #include "strtools.h"
@@ -32,24 +33,7 @@ using json = nlohmann::json;
 CUserPreferencesStorage* g_pUserPreferencesStorage = nullptr;
 CUserPreferencesSystem* g_pUserPreferencesSystem = nullptr;
 
-// CONVAR_TODO
-CON_COMMAND_F(cs2f_user_prefs_api, "API for user preferences, currently a REST API.", FCVAR_LINKED_CONCOMMAND | FCVAR_SPONLY | FCVAR_PROTECTED)
-{
-	if (!g_pUserPreferencesSystem || !g_pUserPreferencesStorage)
-	{
-		Message("The user preferences subsystem is not enabled.");
-		return;
-	}
-
-	CUserPreferencesREST* restStorageSystem = (CUserPreferencesREST*)g_pUserPreferencesStorage;
-	if (args.ArgC() < 2)
-		Message("Usage: %s <url>. Current value: %s\n", args[0], restStorageSystem->GetPreferencesAPIUrl());
-	else
-	{
-		Message("Setting preferences URL to %s\n", args[1]);
-		restStorageSystem->SetPreferencesAPIUrl(args[1]);
-	}
-}
+CConVar<CUtlString> g_cvarUserPrefsAPI("cs2f_user_prefs_api", FCVAR_PROTECTED, "API for user preferences, currently a REST API", "");
 
 CON_COMMAND_CHAT_FLAGS(pullprefs, "- Pull preferences.", ADMFLAG_ROOT)
 {
@@ -98,10 +82,10 @@ void CUserPreferencesSystem::ClearPreferences(int iSlot)
 {
 	m_mUserSteamIds[iSlot] = 0;
 	m_mPreferencesLoaded[iSlot] = false;
-	m_mPreferencesMaps[iSlot].Purge();
+	m_mPreferencesMaps[iSlot].clear();
 }
 
-bool CUserPreferencesSystem::PutPreferences(int iSlot, uint64 iSteamId, CUtlMap<uint32, CPreferenceValue>& preferenceData)
+bool CUserPreferencesSystem::PutPreferences(int iSlot, uint64 iSteamId, UserPrefsMap_t& preferenceData)
 {
 	ZEPlayer* player = g_playerManager->GetPlayer(CPlayerSlot(iSlot));
 	if (!player || !player->IsAuthenticated()) return false;
@@ -112,14 +96,10 @@ bool CUserPreferencesSystem::PutPreferences(int iSlot, uint64 iSteamId, CUtlMap<
 #endif
 	m_mUserSteamIds[iSlot] = iSteamId;
 	m_mPreferencesLoaded[iSlot] = true;
-	FOR_EACH_MAP(preferenceData, i)
-	{
-		uint32 iKeyHash = preferenceData.Key(i);
-		int iValueIdx = preferenceData.Find(iKeyHash);
-		if (iValueIdx == preferenceData.InvalidIndex())
-			continue;
-		m_mPreferencesMaps[iSlot].InsertOrReplace(iKeyHash, preferenceData[iValueIdx]);
-	}
+
+	for (auto prefPair : preferenceData)
+		m_mPreferencesMaps[iSlot][prefPair.first] = prefPair.second;
+
 	return true;
 }
 
@@ -132,10 +112,20 @@ void CUserPreferencesSystem::OnPutPreferences(int iSlot)
 	bool bHideDecals = (bool)GetPreferenceInt(iSlot, DECAL_PREF_KEY_NAME, 1);
 	bool bNoShake = (bool)GetPreferenceInt(iSlot, NO_SHAKE_PREF_KEY_NAME, 0);
 	int iButtonWatchMode = GetPreferenceInt(iSlot, BUTTON_WATCH_PREF_KEY_NAME, 0);
+	bool bZSounds = (bool)GetPreferenceInt(iSlot, ZSOUNDS_PREF_KEY_NAME, 1);
+
+	// EntWatch
+	int iEntwatchMode = GetPreferenceInt(iSlot, EW_PREF_HUD_MODE, 0);
+	float flEntwatchHudposX = GetPreferenceFloat(iSlot, EW_PREF_HUDPOS_X, EW_HUDPOS_X_DEFAULT);
+	float flEntwatchHudposY = GetPreferenceFloat(iSlot, EW_PREF_HUDPOS_Y, EW_HUDPOS_Y_DEFAULT);
+	Color ewHudColor;
+	V_StringToColor(g_pUserPreferencesSystem->GetPreference(iSlot, EW_PREF_HUDCOLOR, "255 255 255 255"), ewHudColor);
+	float flEntwatchHudSize = GetPreferenceFloat(iSlot, EW_PREF_HUDSIZE, EW_HUDSIZE_DEFAULT);
 
 	// Set the values that we just loaded --- the player is guaranteed available
 	g_playerManager->SetPlayerStopSound(iSlot, bStopSound);
 	g_playerManager->SetPlayerSilenceSound(iSlot, bSilenceSound);
+	g_playerManager->SetPlayerZSounds(iSlot, bZSounds);
 	g_playerManager->SetPlayerStopDecals(iSlot, bHideDecals);
 	g_playerManager->SetPlayerNoShake(iSlot, bNoShake);
 
@@ -143,6 +133,12 @@ void CUserPreferencesSystem::OnPutPreferences(int iSlot)
 	player->SetHideDistance(iHideDistance);
 	for (int i = 0; i < iButtonWatchMode; i++)
 		player->CycleButtonWatch();
+
+	// Set EntWatch
+	player->SetEntwatchHudMode(iEntwatchMode);
+	player->SetEntwatchHudPos(flEntwatchHudposX, flEntwatchHudposY);
+	player->SetEntwatchHudColor(ewHudColor);
+	player->SetEntwatchHudSize(flEntwatchHudSize);
 }
 
 void CUserPreferencesSystem::PullPreferences(int iSlot)
@@ -156,7 +152,7 @@ void CUserPreferencesSystem::PullPreferences(int iSlot)
 
 	g_pUserPreferencesStorage->LoadPreferences(
 		iSteamId,
-		[iSlot](uint64 iSteamId, CUtlMap<uint32, CPreferenceValue>& preferenceData) {
+		[iSlot](uint64 iSteamId, UserPrefsMap_t& preferenceData) {
 			if (g_pUserPreferencesSystem->PutPreferences(iSlot, iSteamId, preferenceData))
 				g_pUserPreferencesSystem->OnPutPreferences(iSlot);
 		});
@@ -165,12 +161,11 @@ void CUserPreferencesSystem::PullPreferences(int iSlot)
 const char* CUserPreferencesSystem::GetPreference(int iSlot, const char* sKey, const char* sDefaultValue)
 {
 	uint32 iKeyHash = hash_32_fnv1a_const(sKey);
-	int iKeyIdx = m_mPreferencesMaps[iSlot].Find(iKeyHash);
 #ifdef _DEBUG
-	Message("User at slot %d is reading from preference '%s' with hash %d at index %d.\n", iSlot, sKey, iKeyHash, iKeyIdx);
+	Message("User at slot %d is reading from preference '%s' with hash %d.\n", iSlot, sKey, iKeyHash);
 #endif
-	if (iKeyIdx == m_mPreferencesMaps[iSlot].InvalidIndex()) return sDefaultValue;
-	return (const char*)m_mPreferencesMaps[iSlot][iKeyIdx].GetValue();
+	if (!m_mPreferencesMaps[iSlot].contains(iKeyHash)) return sDefaultValue;
+	return m_mPreferencesMaps[iSlot][iKeyHash]->GetValue();
 }
 
 int CUserPreferencesSystem::GetPreferenceInt(int iSlot, const char* sKey, int iDefaultValue)
@@ -196,21 +191,21 @@ void CUserPreferencesSystem::SetPreference(int iSlot, const char* sKey, const ch
 	Message("User at slot %d is storing in preference '%s' with hash %d value '%s'.\n", iSlot, sKey, iKeyHash, sValue);
 #endif
 
+	std::shared_ptr<CPreferenceValue> prefValue;
+
 	// Create or populate the content of the preference value
-	int iValueIdx = m_mPreferencesMaps[iSlot].Find(iKeyHash);
-	CPreferenceValue* prefValue;
-	if (iValueIdx == m_mPreferencesMaps[iSlot].InvalidIndex())
+	if (!m_mPreferencesMaps[iSlot].contains(iKeyHash))
 	{
-		prefValue = new CPreferenceValue(sKey, sValue);
+		prefValue = std::make_shared<CPreferenceValue>(sKey, sValue);
 	}
 	else
 	{
-		prefValue = &m_mPreferencesMaps[iSlot][iValueIdx];
+		prefValue = m_mPreferencesMaps[iSlot][iKeyHash];
 		prefValue->SetKeyValue(sKey, sValue);
 	}
 
 	// Override the key-value pair and insert
-	m_mPreferencesMaps[iSlot].InsertOrReplace(iKeyHash, *prefValue);
+	m_mPreferencesMaps[iSlot][iKeyHash] = prefValue;
 }
 
 void CUserPreferencesSystem::SetPreferenceInt(int iSlot, const char* sKey, int iValue)
@@ -245,15 +240,14 @@ void CUserPreferencesSystem::PushPreferences(int iSlot)
 	g_pUserPreferencesStorage->StorePreferences(
 		iSteamId,
 		m_mPreferencesMaps[iSlot],
-		[iSlot](uint64 iSteamId, CUtlMap<uint32, CPreferenceValue>& preferenceData) {
+		[iSlot](uint64 iSteamId, UserPrefsMap_t& preferenceData) {
 			if (g_pUserPreferencesSystem->PutPreferences(iSlot, iSteamId, preferenceData))
 				g_pUserPreferencesSystem->OnPutPreferences(iSlot);
 		});
 }
 
-void CUserPreferencesREST::JsonToPreferencesMap(json data, CUtlMap<uint32, CPreferenceValue>& preferencesMap)
+void CUserPreferencesREST::JsonToPreferencesMap(json data, UserPrefsMap_t& preferencesMap)
 {
-	preferencesMap.SetLessFunc(DefLessFunc(uint32));
 	for (auto it = data.begin(); it != data.end(); ++it)
 	{
 		std::string key = it.key();
@@ -263,67 +257,62 @@ void CUserPreferencesREST::JsonToPreferencesMap(json data, CUtlMap<uint32, CPref
 #ifdef _DEBUG
 		Message("- Storing KV-pair: %s, %s\n", key.c_str(), value.c_str());
 #endif
-		CPreferenceValue* prefValue = new CPreferenceValue(key.c_str(), value.c_str());
+		std::shared_ptr<CPreferenceValue> prefValue = std::make_shared<CPreferenceValue>(key.c_str(), value.c_str());
 
 		// Store key, value, and key names
 		uint32 iKeyHash = hash_32_fnv1a_const(prefValue->GetKey());
-		preferencesMap.InsertOrReplace(iKeyHash, *prefValue);
+		preferencesMap[iKeyHash] = prefValue;
 	}
 }
 
-void CUserPreferencesREST::LoadPreferences(uint64 iSteamId, StorageCallback cb)
+void CUserPreferencesREST::LoadPreferences(uint64 iSteamId, StorageCallback_t cb)
 {
 #ifdef _DEBUG
 	Message("Loading data for %llu\n", iSteamId);
 #endif
-	if (m_pszUserPreferencesUrl[0] == '\0') return;
+	if (g_cvarUserPrefsAPI.Get().Length() == 0)
+		return;
 
 	// Submit the request to pull the user data
 	char sUserPreferencesUrl[256];
-	V_snprintf(sUserPreferencesUrl, sizeof(sUserPreferencesUrl), "%s%llu", m_pszUserPreferencesUrl, iSteamId);
-	g_HTTPManager.GET(sUserPreferencesUrl, [iSteamId, cb](HTTPRequestHandle request, json data) {
+	V_snprintf(sUserPreferencesUrl, sizeof(sUserPreferencesUrl), "%s%llu", g_cvarUserPrefsAPI.Get().String(), iSteamId);
+	g_HTTPManager.Get(sUserPreferencesUrl, [iSteamId, cb](HTTPRequestHandle request, json data) {
 #ifdef _DEBUG
 		Message("Executing storage callback during load for %llu\n", iSteamId);
 #endif
-		CUtlMap<uint32, CPreferenceValue> preferencesMap;
+		UserPrefsMap_t preferencesMap;
 		((CUserPreferencesREST*)g_pUserPreferencesStorage)->JsonToPreferencesMap(data, preferencesMap);
 		cb(iSteamId, preferencesMap);
-		preferencesMap.Purge();
+		preferencesMap.clear();
 	});
 }
 
-void CUserPreferencesREST::StorePreferences(uint64 iSteamId, CUtlMap<uint32, CPreferenceValue>& preferences, StorageCallback cb)
+void CUserPreferencesREST::StorePreferences(uint64 iSteamId, UserPrefsMap_t& preferences, StorageCallback_t cb)
 {
 #ifdef _DEBUG
 	Message("Storing data for %llu\n", iSteamId);
 #endif
-	if (m_pszUserPreferencesUrl[0] == '\0') return;
+	if (g_cvarUserPrefsAPI.Get().Length() == 0)
+		return;
 
 	// Create the JSON object with all key-value pairs
 	json sJsonObject = json::object();
-	FOR_EACH_MAP(preferences, i)
-	{
-		uint32 iKeyHash = preferences.Key(i);
-		int iValueIdx = preferences.Find(iKeyHash);
-		if (iValueIdx == preferences.InvalidIndex())
-			continue;
-		CPreferenceValue prefValue = preferences[iValueIdx];
-		sJsonObject[prefValue.GetKey()] = prefValue.GetValue();
-	}
+	for (const auto& [_, prefValue] : preferences)
+		sJsonObject[prefValue->GetKey()] = prefValue->GetValue();
 
 	// Prepare the API URL to send the request to
 	char sUserPreferencesUrl[256];
-	V_snprintf(sUserPreferencesUrl, sizeof(sUserPreferencesUrl), "%s%llu", m_pszUserPreferencesUrl, iSteamId);
+	V_snprintf(sUserPreferencesUrl, sizeof(sUserPreferencesUrl), "%s%llu", g_cvarUserPrefsAPI.Get().String(), iSteamId);
 
 	// Dump the Json object and submit the POST request
 	std::string sDumpedJson = sJsonObject.dump();
-	g_HTTPManager.POST(sUserPreferencesUrl, sDumpedJson.c_str(), [iSteamId, cb](HTTPRequestHandle request, json data) {
+	g_HTTPManager.Post(sUserPreferencesUrl, sDumpedJson.c_str(), [iSteamId, cb](HTTPRequestHandle request, json data) {
 #ifdef _DEBUG
 		Message("Executing storage callback during store for %llu\n", iSteamId);
 #endif
-		CUtlMap<uint32, CPreferenceValue> preferencesMap;
+		UserPrefsMap_t preferencesMap;
 		((CUserPreferencesREST*)g_pUserPreferencesStorage)->JsonToPreferencesMap(data, preferencesMap);
 		cb(iSteamId, preferencesMap);
-		preferencesMap.Purge();
+		preferencesMap.clear();
 	});
 }

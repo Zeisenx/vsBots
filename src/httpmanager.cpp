@@ -30,13 +30,13 @@
 #include "vendor/nlohmann/json.hpp"
 #include <string>
 
-extern ISteamHTTP* g_http;
-
 HTTPManager g_HTTPManager;
 
 #undef strdup
 
-HTTPManager::TrackedRequest::TrackedRequest(HTTPRequestHandle hndl, SteamAPICall_t hCall, std::string strUrl, std::string strText, CompletedCallback callback)
+HTTPManager::TrackedRequest::TrackedRequest(HTTPRequestHandle hndl, SteamAPICall_t hCall,
+											std::string strUrl, std::string strText,
+											CompletedCallback callbackCompleted, ErrorCallback callbackError)
 {
 	m_hHTTPReq = hndl;
 	m_CallResult.SetGameserverFlag();
@@ -44,7 +44,8 @@ HTTPManager::TrackedRequest::TrackedRequest(HTTPRequestHandle hndl, SteamAPICall
 
 	m_strUrl = strUrl;
 	m_strText = strText;
-	m_callback = callback;
+	m_callbackCompleted = callbackCompleted;
+	m_callbackError = callbackError;
 
 	g_HTTPManager.m_PendingRequests.push_back(this);
 }
@@ -63,7 +64,7 @@ HTTPManager::TrackedRequest::~TrackedRequest()
 
 void HTTPManager::TrackedRequest::OnHTTPRequestCompleted(HTTPRequestCompleted_t* arg, bool bFailed)
 {
-	if (bFailed || arg->m_eStatusCode < 200 || arg->m_eStatusCode > 299)
+	if (bFailed || (!m_callbackError && (arg->m_eStatusCode < 200 || arg->m_eStatusCode > 299)))
 	{
 		Message("HTTP request to %s failed with status code %i\n", m_strUrl.c_str(), arg->m_eStatusCode);
 	}
@@ -85,14 +86,17 @@ void HTTPManager::TrackedRequest::OnHTTPRequestCompleted(HTTPRequestCompleted_t*
 
 			if (jsonResponse.is_discarded())
 				Message("Failed parsing JSON from HTTP response: %s\n", (char*)response);
-			else
-				m_callback(arg->m_hRequest, jsonResponse);
 		}
-		else
+
+		if (!jsonResponse.is_discarded() && (arg->m_eStatusCode < 200 || arg->m_eStatusCode > 299))
+			m_callbackError(arg->m_hRequest, arg->m_eStatusCode, jsonResponse);
+		else if (arg->m_eStatusCode < 200 || arg->m_eStatusCode > 299)
 		{
-			// If empty response (Discord..), just treat it as a successful empty JSON object
-			m_callback(arg->m_hRequest, jsonResponse);
+			// Allow error callback even if invalid json, since error code can provide useful info
+			m_callbackError(arg->m_hRequest, arg->m_eStatusCode, json());
 		}
+		else if (!jsonResponse.is_discarded() && m_callbackCompleted)
+			m_callbackCompleted(arg->m_hRequest, jsonResponse);
 
 		delete[] response;
 	}
@@ -103,24 +107,57 @@ void HTTPManager::TrackedRequest::OnHTTPRequestCompleted(HTTPRequestCompleted_t*
 	delete this;
 }
 
-void HTTPManager::GET(const char* pszUrl, CompletedCallback callback, std::vector<HTTPHeader>* headers)
+void HTTPManager::Get(const char* pszUrl, CompletedCallback callbackCompleted,
+					  ErrorCallback callbackError, std::vector<HTTPHeader>* headers)
 {
-	GenerateRequest(k_EHTTPMethodGET, pszUrl, "", callback, headers);
+	GenerateRequest(k_EHTTPMethodGET, pszUrl, "", callbackCompleted, callbackError, headers);
 }
 
-void HTTPManager::POST(const char* pszUrl, const char* pszText, CompletedCallback callback, std::vector<HTTPHeader>* headers)
+void HTTPManager::Post(const char* pszUrl, const char* pszText, CompletedCallback callbackCompleted,
+					   ErrorCallback callbackError, std::vector<HTTPHeader>* headers)
 {
-	GenerateRequest(k_EHTTPMethodPOST, pszUrl, pszText, callback, headers);
+	GenerateRequest(k_EHTTPMethodPOST, pszUrl, pszText, callbackCompleted, callbackError, headers);
 }
 
-void HTTPManager::GenerateRequest(EHTTPMethod method, const char* pszUrl, const char* pszText, CompletedCallback callback, std::vector<HTTPHeader>* headers)
+void HTTPManager::Put(const char* pszUrl, const char* pszText, CompletedCallback callbackCompleted,
+					  ErrorCallback callbackError, std::vector<HTTPHeader>* headers)
 {
+	GenerateRequest(k_EHTTPMethodPUT, pszUrl, pszText, callbackCompleted, callbackError, headers);
+}
+
+void HTTPManager::Patch(const char* pszUrl, const char* pszText, CompletedCallback callbackCompleted,
+						ErrorCallback callbackError, std::vector<HTTPHeader>* headers)
+{
+	GenerateRequest(k_EHTTPMethodPATCH, pszUrl, pszText, callbackCompleted, callbackError, headers);
+}
+
+void HTTPManager::Delete(const char* pszUrl, const char* pszText, CompletedCallback callbackCompleted,
+						 ErrorCallback callbackError, std::vector<HTTPHeader>* headers)
+{
+	GenerateRequest(k_EHTTPMethodDELETE, pszUrl, pszText, callbackCompleted, callbackError, headers);
+}
+
+void HTTPManager::GenerateRequest(EHTTPMethod method, const char* pszUrl, const char* pszText,
+								  CompletedCallback callbackCompleted, ErrorCallback callbackError,
+								  std::vector<HTTPHeader>* headers)
+{
+	if (!g_http)
+	{
+		Panic("A web request was attempted before g_http was instantiated, returning early.\n");
+		return;
+	}
+
 	// Message("Sending HTTP:\n%s\n", pszText);
 	auto hReq = g_http->CreateHTTPRequest(method, pszUrl);
 	int size = strlen(pszText);
 	// Message("HTTP request: %p\n", hReq);
 
-	if (method == k_EHTTPMethodPOST && !g_http->SetHTTPRequestRawPostBody(hReq, "application/json", (uint8*)pszText, size))
+	bool shouldHaveBody = method == k_EHTTPMethodPOST
+						  || method == k_EHTTPMethodPATCH
+						  || method == k_EHTTPMethodPUT
+						  || method == k_EHTTPMethodDELETE;
+
+	if (shouldHaveBody && !g_http->SetHTTPRequestRawPostBody(hReq, "application/json", (uint8*)pszText, size))
 	{
 		// Message("Failed to SetHTTPRequestRawPostBody\n");
 		return;
@@ -136,5 +173,5 @@ void HTTPManager::GenerateRequest(EHTTPMethod method, const char* pszUrl, const 
 	SteamAPICall_t hCall;
 	g_http->SendHTTPRequest(hReq, &hCall);
 
-	new TrackedRequest(hReq, hCall, pszUrl, pszText, callback);
+	new TrackedRequest(hReq, hCall, pszUrl, pszText, callbackCompleted, callbackError);
 }

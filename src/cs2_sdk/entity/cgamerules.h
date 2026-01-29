@@ -66,11 +66,16 @@ public:
 	SCHEMA_FIELD(GameTime_t, m_fRoundStartTime)
 	SCHEMA_FIELD(GameTime_t, m_flRestartRoundTime)
 	SCHEMA_FIELD_POINTER(int, m_nEndMatchMapGroupVoteOptions)
+	SCHEMA_FIELD_POINTER(int, m_nEndMatchMapGroupVoteTypes)
 	SCHEMA_FIELD(int, m_nEndMatchMapVoteWinner)
 	SCHEMA_FIELD(int, m_iRoundTime)
 	SCHEMA_FIELD(bool, m_bFreezePeriod)
 	SCHEMA_FIELD_POINTER(CUtlVector<SpawnPoint*>, m_CTSpawnPoints)
 	SCHEMA_FIELD_POINTER(CUtlVector<SpawnPoint*>, m_TerroristSpawnPoints)
+	SCHEMA_FIELD(int, m_iMaxNumTerrorists)
+	SCHEMA_FIELD(int, m_iMaxNumCTs)
+	SCHEMA_FIELD(bool, m_bGameRestart)
+	SCHEMA_FIELD(bool, m_bWarmupPeriod)
 
 	void TerminateRound(float flDelay, CSRoundEndReason reason)
 	{
