@@ -104,9 +104,7 @@ namespace addresses
 	inline void(FASTCALL* CBaseEntity_SetMoveType)(CBaseEntity* pThis, MoveType_t nMoveType, MoveCollide_t nMoveCollide);
 	inline void(FASTCALL* CTakeDamageInfo_Constructor)(CTakeDamageInfo* pThis, CBaseEntity* pInflictor, CBaseEntity* pAttacker, CBaseEntity* pAbility,
 													   const Vector* vecDamageForce, const Vector* vecDamagePosition, float flDamage, int bitsDamageType, int iCustomDamage, void* a10);
-	inline void(FASTCALL* CNetworkStringTable_DeleteAllStrings)(INetworkStringTable* pThis);
 	inline void(FASTCALL* CBaseEntity_StopSound)(CBaseEntity* pEntity, const char* pszSound);
-} // namespace addresses
 	inline void(FASTCALL* CCSPlayer_WeaponServices_EquipWeapon)(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon);
 	inline void(FASTCALL* GetSpawnGroups)(CSpawnGroupMgrGameSystem* pSpawnGroupMgr, CUtlVector<SpawnGroupHandle_t>* pList);
 } // namespace addresses
