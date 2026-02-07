@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2025 Source2ZE
+ * Copyright (C) 2023-2026 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -735,7 +735,7 @@ void EWItemInstance::FindExistingHandlers()
 			continue;
 
 		CBaseEntity* pTarget = nullptr;
-		while ((pTarget = UTIL_FindEntityByName(pTarget, "*")))
+		while ((pTarget = UTIL_FindEntityByClassname(pTarget, "*")))
 		{
 			if (!V_strcmp(pTarget->m_sUniqueHammerID().Get(), handler->szHammerid.c_str()))
 			{

@@ -1,7 +1,7 @@
 /**
  * =============================================================================
  * CS2Fixes
- * Copyright (C) 2023-2025 Source2ZE
+ * Copyright (C) 2023-2026 Source2ZE
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -49,6 +49,7 @@
 #include "interface.h"
 #include "leader.h"
 #include "map_votes.h"
+#include "mapmigrations.h"
 #include "networkstringtabledefs.h"
 #include "panoramavote.h"
 #include "patches.h"
@@ -78,7 +79,6 @@ class GameSessionConfiguration_t
 
 SH_DECL_HOOK3_void(IServerGameDLL, GameFrame, SH_NOATTRIB, 0, bool, bool, bool);
 SH_DECL_HOOK0_void(IServerGameDLL, GameServerSteamAPIActivated, SH_NOATTRIB, 0);
-SH_DECL_HOOK0_void(IServerGameDLL, GameServerSteamAPIDeactivated, SH_NOATTRIB, 0);
 SH_DECL_HOOK1_void(IServerGameDLL, ApplyGameSettings, SH_NOATTRIB, 0, KeyValues*);
 SH_DECL_HOOK4_void(IServerGameClients, ClientActive, SH_NOATTRIB, 0, CPlayerSlot, bool, const char*, uint64);
 SH_DECL_HOOK5_void(IServerGameClients, ClientDisconnect, SH_NOATTRIB, 0, CPlayerSlot, ENetworkDisconnectionReason, const char*, uint64, const char*);
@@ -104,14 +104,13 @@ SH_DECL_MANUALHOOK1_void(GoToIntermission, 0, 0, 0, bool);
 SH_DECL_MANUALHOOK2_void(PhysicsTouchShuffle, 0, 0, 0, CUtlVector<TouchLinked_t>*, bool);
 SH_DECL_MANUALHOOK3_void(DropWeapon, 0, 0, 0, CBasePlayerWeapon*, Vector*, Vector*);
 SH_DECL_HOOK1_void(IServer, SetGameSpawnGroupMgr, SH_NOATTRIB, 0, IGameSpawnGroupMgr*);
+SH_DECL_HOOK2_void(CEntitySystem, Spawn, SH_NOATTRIB, 0, int, const EntitySpawnInfo_t*);
 
 CS2Fixes g_CS2Fixes;
 IGameEventSystem* g_gameEventSystem = nullptr;
 IGameEventManager2* g_gameEventManager = nullptr;
 CGameEntitySystem* g_pEntitySystem = nullptr;
 IVEngineServer2* g_pEngineServer2 = nullptr;
-ISteamHTTP* g_http = nullptr;
-CSteamGameServerAPIContext g_steamAPI;
 CCSGameRules* g_pGameRules = nullptr;				  // Will be null between map end & new map startup, null check if necessary!
 CSpawnGroupMgrGameSystem* g_pSpawnGroupMgr = nullptr; // Will be null between map end & new map startup, null check if necessary!
 
@@ -127,6 +126,7 @@ int g_iGoToIntermissionId = -1;
 int g_iPhysicsTouchShuffle = -1;
 int g_iWeaponServiceDropWeaponId = -1;
 int g_iSetGameSpawnGroupMgrId = -1;
+int g_iSpawnId = -1;
 
 double g_flUniversalTime = 0.0;
 float g_flLastTickedTime = 0.0f;
@@ -197,7 +197,6 @@ bool CS2Fixes::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool
 
 	SH_ADD_HOOK(IServerGameDLL, GameFrame, g_pSource2Server, SH_MEMBER(this, &CS2Fixes::Hook_GameFramePost), true);
 	SH_ADD_HOOK(IServerGameDLL, GameServerSteamAPIActivated, g_pSource2Server, SH_MEMBER(this, &CS2Fixes::Hook_GameServerSteamAPIActivated), false);
-	SH_ADD_HOOK(IServerGameDLL, GameServerSteamAPIDeactivated, g_pSource2Server, SH_MEMBER(this, &CS2Fixes::Hook_GameServerSteamAPIDeactivated), false);
 	SH_ADD_HOOK(IServerGameDLL, ApplyGameSettings, g_pSource2Server, SH_MEMBER(this, &CS2Fixes::Hook_ApplyGameSettings), false);
 	SH_ADD_HOOK(IServerGameClients, ClientActive, g_pSource2GameClients, SH_MEMBER(this, &CS2Fixes::Hook_ClientActive), true);
 	SH_ADD_HOOK(IServerGameClients, ClientDisconnect, g_pSource2GameClients, SH_MEMBER(this, &CS2Fixes::Hook_ClientDisconnect), true);
@@ -326,8 +325,10 @@ bool CS2Fixes::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool
 	g_iWeaponServiceDropWeaponId = SH_ADD_MANUALDVPHOOK(DropWeapon, pCCSPlayer_WeaponServicesVTable, SH_MEMBER(this, &CS2Fixes::Hook_DropWeaponPost), true);
 
 	auto pCGameEventManagerVTable = (IGameEventManager2*)modules::server->FindVirtualTable("CGameEventManager");
-
 	g_iLoadEventsFromFileId = SH_ADD_DVPHOOK(IGameEventManager2, LoadEventsFromFile, pCGameEventManagerVTable, SH_MEMBER(this, &CS2Fixes::Hook_LoadEventsFromFile), false);
+
+	auto pCEntitySystemVTable = (CEntitySystem*)modules::server->FindVirtualTable("CGameEntitySystem");
+	g_iSpawnId = SH_ADD_DVPHOOK(CEntitySystem, Spawn, pCEntitySystemVTable, SH_MEMBER(this, &CS2Fixes::Hook_SpawnPost), true);
 
 	if (!bRequiredInitLoaded)
 	{
@@ -366,6 +367,7 @@ bool CS2Fixes::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool
 	g_pIdleSystem = new CIdleSystem();
 	g_pPanoramaVoteHandler = new CPanoramaVoteHandler();
 	g_pEWHandler = new CEWHandler();
+	g_pMapMigrations = new CMapMigrations();
 
 	RegisterWeaponCommands();
 
@@ -404,10 +406,6 @@ bool CS2Fixes::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bool
 		g_pVoteManager->VoteManager_Init();
 
 		g_pIdleSystem->Reset();
-
-		g_steamAPI.Init();
-		g_http = g_steamAPI.SteamHTTP();
-
 		g_playerManager->OnSteamAPIActivated();
 
 		if (g_cvarVoteManagerEnable.Get() && !g_pMapVoteSystem->IsMapListLoaded())
@@ -425,7 +423,6 @@ bool CS2Fixes::Unload(char* error, size_t maxlen)
 {
 	SH_REMOVE_HOOK(IServerGameDLL, GameFrame, g_pSource2Server, SH_MEMBER(this, &CS2Fixes::Hook_GameFramePost), true);
 	SH_REMOVE_HOOK(IServerGameDLL, GameServerSteamAPIActivated, g_pSource2Server, SH_MEMBER(this, &CS2Fixes::Hook_GameServerSteamAPIActivated), false);
-	SH_REMOVE_HOOK(IServerGameDLL, GameServerSteamAPIDeactivated, g_pSource2Server, SH_MEMBER(this, &CS2Fixes::Hook_GameServerSteamAPIDeactivated), false);
 	SH_REMOVE_HOOK(IServerGameDLL, ApplyGameSettings, g_pSource2Server, SH_MEMBER(this, &CS2Fixes::Hook_ApplyGameSettings), false);
 	SH_REMOVE_HOOK(IServerGameClients, ClientActive, g_pSource2GameClients, SH_MEMBER(this, &CS2Fixes::Hook_ClientActive), true);
 	SH_REMOVE_HOOK(IServerGameClients, ClientDisconnect, g_pSource2GameClients, SH_MEMBER(this, &CS2Fixes::Hook_ClientDisconnect), true);
@@ -449,6 +446,7 @@ bool CS2Fixes::Unload(char* error, size_t maxlen)
 	SH_REMOVE_HOOK_ID(g_iCGamePlayerEquipPrecacheId);
 	SH_REMOVE_HOOK_ID(g_iCTriggerGravityPrecacheId);
 	SH_REMOVE_HOOK_ID(g_iCTriggerGravityEndTouchId);
+	SH_REMOVE_HOOK_ID(g_iSpawnId);
 
 	if (g_iSetGameSpawnGroupMgrId != -1)
 		SH_REMOVE_HOOK_ID(g_iSetGameSpawnGroupMgrId);
@@ -515,6 +513,9 @@ bool CS2Fixes::Unload(char* error, size_t maxlen)
 		g_pEWHandler->RemoveAllTriggers();
 		delete g_pEWHandler;
 	}
+
+	if (g_pMapMigrations)
+		delete g_pMapMigrations;
 
 	return true;
 }
@@ -689,20 +690,10 @@ void CS2Fixes::Hook_CTriggerGravityEndTouch(CBaseEntity* pOther)
 }
 void CS2Fixes::Hook_GameServerSteamAPIActivated()
 {
-	g_steamAPI.Init();
-	g_http = g_steamAPI.SteamHTTP();
-
 	g_playerManager->OnSteamAPIActivated();
 
 	if (g_cvarVoteManagerEnable.Get() && !g_pMapVoteSystem->IsMapListLoaded())
 		g_pMapVoteSystem->LoadMapList();
-
-	RETURN_META(MRES_IGNORED);
-}
-
-void CS2Fixes::Hook_GameServerSteamAPIDeactivated()
-{
-	g_http = nullptr;
 
 	RETURN_META(MRES_IGNORED);
 }
@@ -749,7 +740,7 @@ void CS2Fixes::Hook_PostEvent(CSplitScreenSlot nSlot, bool bLocalOnly, int nClie
 		*(uint64*)clients &= ~g_playerManager->GetStopSoundMask();
 		*(uint64*)clients &= ~g_playerManager->GetSilenceSoundMask();
 	}
-	else if (info->m_MessageId == TE_WorldDecalId)
+	else if (info->m_MessageId == GE_PlaceDecalEvent)
 	{
 		*(uint64*)clients &= ~g_playerManager->GetStopDecalsMask();
 	}
@@ -780,10 +771,6 @@ void CS2Fixes::Hook_PostEvent(CSplitScreenSlot nSlot, bool bLocalOnly, int nClie
 			static std::set<uint32> soundEventHashes;
 
 			ExecuteOnce(
-				soundEventHashes.insert(GetSoundEventHash("Weapon_Knife.HitWall"));
-				soundEventHashes.insert(GetSoundEventHash("Weapon_Knife.Slash"));
-				soundEventHashes.insert(GetSoundEventHash("Weapon_Knife.Hit"));
-				soundEventHashes.insert(GetSoundEventHash("Weapon_Knife.Stab"));
 				soundEventHashes.insert(GetSoundEventHash("Weapon_sg556.ZoomIn"));
 				soundEventHashes.insert(GetSoundEventHash("Weapon_sg556.ZoomOut"));
 				soundEventHashes.insert(GetSoundEventHash("Weapon_AUG.ZoomIn"));
@@ -814,7 +801,7 @@ void CS2Fixes::Hook_PostEvent(CSplitScreenSlot nSlot, bool bLocalOnly, int nClie
 			if (!pSourceEntity)
 				return;
 
-			if (!V_strcasecmp(pSourceEntity->GetClassname(), "player"))
+			if (pSourceEntity->IsPawn() && ((CCSPlayerPawn*)pSourceEntity)->GetController())
 			{
 				playerSlot = ((CCSPlayerPawn*)pSourceEntity)->GetController()->GetPlayerSlot();
 			}
@@ -822,7 +809,7 @@ void CS2Fixes::Hook_PostEvent(CSplitScreenSlot nSlot, bool bLocalOnly, int nClie
 			{
 				CCSPlayerPawn* pPawn = (CCSPlayerPawn*)pSourceEntity->m_hOwnerEntity().Get();
 
-				if (pPawn && pPawn->IsPawn())
+				if (pPawn && pPawn->IsPawn() && pPawn->GetController())
 					playerSlot = pPawn->GetController()->GetPlayerSlot();
 			}
 
@@ -1070,6 +1057,7 @@ void CS2Fixes::Hook_CheckTransmit(CCheckTransmitInfo** ppInfoList, int infoCount
 void CS2Fixes::Hook_ApplyGameSettings(KeyValues* pKV)
 {
 	g_pMapVoteSystem->ApplyGameSettings(pKV);
+	g_pMapMigrations->ApplyGameSettings(pKV);
 }
 
 void CS2Fixes::Hook_CreateWorkshopMapGroup(const char* name, const CUtlStringList& mapList)
@@ -1240,6 +1228,12 @@ void CS2Fixes::Hook_SetGameSpawnGroupMgr(IGameSpawnGroupMgr* pSpawnGroupMgr)
 {
 	// This also resets our stored pointer on deletion, since null gets passed into this function, nice!
 	g_pSpawnGroupMgr = (CSpawnGroupMgrGameSystem*)pSpawnGroupMgr;
+}
+
+void CS2Fixes::Hook_SpawnPost(int nCount, const EntitySpawnInfo_t* pInfo)
+{
+	for (int i = 0; i < nCount; i++)
+		g_pMapMigrations->OnEntitySpawned(pInfo[i].m_pEntity->m_pInstance, pInfo[i].m_pKeyValues);
 }
 
 void* CS2Fixes::OnMetamodQuery(const char* iface, int* ret)
