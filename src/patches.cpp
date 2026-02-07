@@ -35,7 +35,7 @@ CMemPatch g_CommonPatches[] =
 		CMemPatch("CheckJumpButtonWater", "FixWaterFloorJump"),
 		CMemPatch("CPhysBox_Use", "CPhysBox_Use"),
 		CMemPatch("BotNavIgnore", "BotNavIgnore"),
-		CMemPatch("BotDefuseBombFix", "BotDefuseBombFix"),
+		//CMemPatch("BotDefuseBombFix", "BotDefuseBombFix"),
 #ifndef _WIN32
 		// Linux checks for the nav mesh in each bot_add command, so we patch 3 times
 		CMemPatch("BotNavIgnore", "BotNavIgnore"),

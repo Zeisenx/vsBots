@@ -1,4 +1,4 @@
-﻿/**
+/**
  * =============================================================================
  * CS2Fixes
  * Copyright (C) 2023-2026 Source2ZE
@@ -242,7 +242,7 @@ public:
 	
 	void StopSound(const char* pszSound)
 	{
-		addresses::CBaseEntity_StopSound(this, pszSound);
+		//addresses::CBaseEntity_StopSound(this, pszSound);
 	}
 
 	void DispatchParticle(const char* pszParticleName, IRecipientFilter* pFilter, ParticleAttachment_t nAttachType = PATTACH_POINT_FOLLOW,

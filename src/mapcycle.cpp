@@ -49,6 +49,7 @@ CON_COMMAND_F(cs2f_mapcycle_list, "Show Mapcycle List", FCVAR_LINKED_CONCOMMAND 
 
 void ChangeLevel(string mapName)
 {
+	return;
 	char command[128];
 	bool isWorkshop = mapName.find_first_not_of("0123456789") == string::npos;
 	V_snprintf(command, sizeof(command), "%s %s", isWorkshop ? "host_workshop_map" : "changelevel", mapName);
@@ -57,11 +58,14 @@ void ChangeLevel(string mapName)
 
 void MapCycle_OnLevelInit(const char* mapName)
 {
+	return;
 	LoadMapCycle();
 }
 
 void LoadMapCycle(bool force)
 {
+	return;
+
 	const bool firstLoad = g_mapList.Count() == 0;
 	
 	if (firstLoad || force)

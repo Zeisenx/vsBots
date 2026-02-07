@@ -65,9 +65,9 @@ int g_botTeam = CS_TEAM_T;
 
 bool g_bScoreboardRankUpdate = true;
 
-CConVar<int> g_cvarSwitchChance("cs2f_mapcycle_index", FCVAR_NONE, "Skin Enable", 50);
-CConVar<int> g_cvarDifficulty("cs2f_mapcycle_nextmap", FCVAR_NONE, "Skin Enable", DIFFICULTY_MIN);
-CConVar<bool> g_cvarPlayerGlow("cs2f_mapcycle_change_time", FCVAR_NONE, "Skin Enable", false);
+CConVar<int> g_cvarSwitchChance("vsbots_switchchance", FCVAR_NONE, "Skin Enable", 50);
+CConVar<int> g_cvarDifficulty("vsbots_difficulty", FCVAR_NONE, "Skin Enable", DIFFICULTY_MIN);
+CConVar<bool> g_cvarPlayerGlow("vsbots_player_glow", FCVAR_NONE, "Skin Enable", false);
 
 KeyValues* g_pKVPrintText;
 
@@ -158,7 +158,7 @@ void CPrintChatToAll(const char* msg, ...)
 
 void DuplicateSpawnPoint(int team, int maxCount)
 {
-	CUtlVector<SpawnPoint*>* botTeamSpawns = team == CS_TEAM_T ? g_pGameRules->m_TerroristSpawnPoints() : g_pGameRules->m_CTSpawnPoints();
+	CUtlVector<CHandle<SpawnPoint>>* botTeamSpawns = team == CS_TEAM_T ? g_pGameRules->m_TerroristSpawnPoints() : g_pGameRules->m_CTSpawnPoints();
 
 	const int botsCount = 50;
 	size_t addCount = botsCount - botTeamSpawns->Count();
@@ -168,12 +168,13 @@ void DuplicateSpawnPoint(int team, int maxCount)
 
 	for (int i = 1; i <= addCount; i++)
 	{
+		CHandle<SpawnPoint> spawnHandle = (*botTeamSpawns)[i % botTeamSpawns->Count()];
 		SpawnPoint* spawnEntity = CreateEntityByName<SpawnPoint>(team == CS_TEAM_T ? "info_player_terrorist" : "info_player_counterterrorist");
 
 		CEntityKeyValues* pKeyValues = new CEntityKeyValues();
 
-		spawnEntity->SetAbsOrigin((*botTeamSpawns)[i % botTeamSpawns->Count()]->GetAbsOrigin());
-		spawnEntity->SetAbsRotation((*botTeamSpawns)[i % botTeamSpawns->Count()]->GetAbsRotation());
+		spawnEntity->SetAbsOrigin(spawnHandle.Get()->GetAbsOrigin());
+		spawnEntity->SetAbsRotation(spawnHandle.Get()->GetAbsRotation());
 		spawnEntity->DispatchSpawn();
 	}
 }
@@ -267,7 +268,7 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 	else
 		g_cvarDifficulty.Set(MAX(DIFFICULTY_MIN, g_cvarDifficulty.Get() - 1));
 
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_cvarDifficulty.Get());
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d -> %d", oldLevel, g_cvarDifficulty.Get());
 
 	for (int i = 0; i < GetGlobals()->maxClients; i++)
 	{
@@ -300,28 +301,24 @@ void RestrictWeapons(CCSPlayerPawn* pPawn)
 
 void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex)
 {
-	//CUtlVector<WeaponPurchaseCount_t>* weaponPurchases = pPawn->m_pActionTrackingServices->m_weaponPurchasesThisRound().m_weaponPurchases;
-	//bool found = false;
-	//FOR_EACH_VEC(*weaponPurchases, i)
-	//{
-	//	WeaponPurchaseCount_t& purchase = (*weaponPurchases)[i];
-	//	if (purchase.m_nItemDefIndex == itemDefIndex)
-	//	{
-	//		purchase.m_nCount += 999;
-	//		found = true;
-	//		break;
-	//	}
-	//}
+	CUtlVector<WeaponPurchaseCount_t>* weaponPurchases = pPawn->m_pActionTrackingServices->m_weaponPurchasesThisRound().m_weaponPurchases;
+	bool found = false;
+	FOR_EACH_VEC(*weaponPurchases, i)
+	{
+		WeaponPurchaseCount_t& purchase = (*weaponPurchases)[i];
+		if (purchase.m_nItemDefIndex == itemDefIndex)
+		{
+			purchase.m_nCount += 999;
+			found = true;
+			break;
+		}
+	}
 
-	//if (!found)
-	//{
-	//	WeaponPurchaseCount_t purchase = {};
-
-	//	purchase.m_nCount = 999;
-	//	purchase.m_nItemDefIndex = itemDefIndex;
-
-	//	weaponPurchases->AddToTail(purchase);
-	//}
+	if (!found)
+	{
+		WeaponPurchaseCount_t purchase(pPawn, itemDefIndex, 999);
+		weaponPurchases->AddToTail(purchase);
+	}
 }
 
 // @Todo : Clean up this shit, I guess no one can read this expect me

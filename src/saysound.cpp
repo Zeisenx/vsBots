@@ -60,6 +60,8 @@ bool SaySound_OnChat(CCSPlayerController* pController, const char* pMessage)
 	if (!g_pSaySoundsKV)
 		return false;
 
+	return false;
+
 	std::string bufStr = pMessage;
 	bufStr = std::regex_replace(bufStr, std::regex("\\!"), "EXCL");
 	bufStr = std::regex_replace(bufStr, std::regex("\\~"), "tilda");
