@@ -233,8 +233,6 @@ public:
 	SCHEMA_FIELD(bool, m_bHasHelmet);
 	SCHEMA_FIELD(bool, m_bHasHeavyArmor);
 
-	virtual ~CCSPlayer_ItemServices() = 0;
-
 private:
 	virtual CBasePlayerWeapon* _GiveNamedItem(const char* pchName) = 0;
 

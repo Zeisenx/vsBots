@@ -75,7 +75,6 @@ public:
 	SCHEMA_FIELD(int, m_iMaxNumTerrorists)
 	SCHEMA_FIELD(int, m_iMaxNumCTs)
 	SCHEMA_FIELD(bool, m_bGameRestart)
-	SCHEMA_FIELD(bool, m_bWarmupPeriod)
 
 	void TerminateRound(float flDelay, CSRoundEndReason reason)
 	{

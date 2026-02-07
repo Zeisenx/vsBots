@@ -49,12 +49,7 @@ void CEntityListener::OnEntitySpawned(CEntityInstance* pEntity)
 	Message("Entity spawned: %s %s\n", pszClassName, ((CBaseEntity*)pEntity)->m_sUniqueHammerID().Get());
 #endif
 
-<<<<<<< HEAD
-	vsBots_OnEntitySpawned(pEntity);
-	if (g_bGrenadeNoBlock && V_stristr(pEntity->GetClassname(), "_projectile"))
-=======
 	if (g_cvarGrenadeNoBlock.Get() && V_stristr(pEntity->GetClassname(), "_projectile"))
->>>>>>> upstream
 		reinterpret_cast<CBaseEntity*>(pEntity)->SetCollisionGroup(COLLISION_GROUP_DEBRIS);
 
 	EntityHandler_OnEntitySpawned(reinterpret_cast<CBaseEntity*>(pEntity));

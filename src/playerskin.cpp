@@ -1,15 +1,12 @@
-
-
 #include "commands.h"
 #include "eventlistener.h"
 #include "utils/entity.h"
 #include "ctimer.h"
 #include "playerskin.h"
- 
-bool g_bPlayerSkinEnable = true;
-FAKE_BOOL_CVAR(cs2f_playerskin_enable , "Skin Enable", g_bPlayerSkinEnable, true, true)
 
-KeyValues* g_pKVConfig;
+CConVar<bool> g_cvarPlayerSkinEnable("cs2f_playerskin_enable", FCVAR_NONE, "Skin Enable", true);
+
+KeyValues* g_pKVConfig = nullptr;
 
 void LoadSkinConfig();
 
@@ -45,7 +42,7 @@ void LoadSkinConfig()
 
 bool IsValidSkin(const char* keyName)
 {
-	if (!g_pKVConfig || !g_bPlayerSkinEnable)
+	if (!g_pKVConfig || !g_cvarPlayerSkinEnable.Get())
 		return false;
 
 	for (KeyValues* pKey = g_pKVConfig->GetFirstSubKey(); pKey; pKey = pKey->GetNextKey())
@@ -61,7 +58,7 @@ bool IsValidSkin(const char* keyName)
 
 bool SetSkin(CCSPlayerPawn* pPawn, std::string keyName)
 {
-	if (!g_pKVConfig || !g_bPlayerSkinEnable)
+	if (!g_pKVConfig || !g_cvarPlayerSkinEnable.Get())
 		return false;
 
 	for (KeyValues* pKey = g_pKVConfig->GetFirstSubKey(); pKey; pKey = pKey->GetNextKey())
@@ -78,7 +75,7 @@ bool SetSkin(CCSPlayerPawn* pPawn, std::string keyName)
 
 CON_COMMAND_CHAT(skin, "- set skin")
 {
-	if (!g_bPlayerSkinEnable)
+	if (!g_cvarPlayerSkinEnable.Get())
 		return;
 	
 	if (!player)
@@ -110,7 +107,7 @@ CON_COMMAND_CHAT(skin, "- set skin")
 void PlayerSkin_OnPlayerSpawn(CCSPlayerController* pController)
 {
 	CHandle<CCSPlayerController> handle = pController->GetHandle();
-	new CTimer(0.0f, false, false, [handle]()
+	CTimer::Create(0.0f, TIMERFLAG_MAP | TIMERFLAG_ROUND, [handle]()
 	{
 		CCSPlayerController* pController = (CCSPlayerController*)handle.Get();
 		if (!pController)

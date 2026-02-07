@@ -36,7 +36,6 @@
 #include "leader.h"
 #include "map_votes.h"
 #include "panoramavote.h"
-#include "map_votes.h"
 #include "recipientfilters.h"
 #include "topdefender.h"
 #include "votemanager.h"
@@ -174,10 +173,7 @@ GAME_EVENT_F(player_hurt)
 {
 	vsBots_OnPlayerHurt(pEvent);
 
-	if (g_bEnableZR)
-		ZR_OnPlayerHurt(pEvent);
-
-	if (!g_bEnableTopDefender)
+	if (!g_cvarEnableTopDefender.Get())
 		return;
 
 	CCSPlayerController* pAttacker = (CCSPlayerController*)pEvent->GetPlayerController("attacker");
@@ -259,15 +255,6 @@ GAME_EVENT_F(round_end)
 		TD_OnRoundEnd(pEvent);
 }
 
-GAME_EVENT_F(cs_win_panel_match)
-{
-	if (g_bVoteManagerEnable && !g_pMapVoteSystem->IsVoteOngoing())
-		g_pMapVoteSystem->StartVote();
-
-	vsBots_OnGameEnd();
-	MapCycle_OnGameEnd();
-}
-
 GAME_EVENT_F(round_freeze_end)
 {
 	if (g_cvarEnableZR.Get())
@@ -300,4 +287,7 @@ GAME_EVENT_F(cs_win_panel_match)
 
 	if (!g_pMapVoteSystem->IsVoteOngoing())
 		g_pMapVoteSystem->StartVote();
+
+	vsBots_OnGameEnd();
+	MapCycle_OnGameEnd();
 }

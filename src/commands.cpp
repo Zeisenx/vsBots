@@ -172,7 +172,7 @@ void ParseWeaponCommand(const CCommand& args, CCSPlayerController* player)
 		return;
 	}
 
-	if (g_bEnableZR && pPawn->m_iTeamNum != CS_TEAM_CT)
+	if (g_cvarEnableZR.Get() && pPawn->m_iTeamNum != CS_TEAM_CT)
 	{
 		ClientPrint(player, HUD_PRINTTALK, CHAT_PREFIX "You can only buy weapons when human.");
 		return;

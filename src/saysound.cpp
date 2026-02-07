@@ -7,8 +7,6 @@
 
 KeyValues* g_pSaySoundsKV;
 
-extern CGlobalVars* gpGlobals;
-
 void LoadSaySoundsKV();
 
 CON_COMMAND_F(cs2f_saysound_reload, "Reload Saysound", FCVAR_LINKED_CONCOMMAND | FCVAR_SPONLY | FCVAR_PROTECTED)
@@ -19,7 +17,7 @@ CON_COMMAND_F(cs2f_saysound_reload, "Reload Saysound", FCVAR_LINKED_CONCOMMAND |
 
 void EmitSoundToAll(const char* pszSound)
 {
-	for (int i = 0; i < gpGlobals->maxClients; i++)
+	for (int i = 0; i < GetGlobals()->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
 		if (!pController || !pController->IsConnected() || pController->IsBot())

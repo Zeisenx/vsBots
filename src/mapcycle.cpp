@@ -8,17 +8,11 @@
 
 using namespace std;
 
-int g_mapListIndex = 1;
-string g_forceNextMap;
-float g_mapChangeTime = 15.0f;
-string g_workshopNameType = "source_folder";
-bool g_randomMapCycle = true;
-
-FAKE_INT_CVAR(cs2f_mapcycle_index, "", g_mapListIndex, false, false)
-FAKE_STRING_CVAR(cs2f_mapcycle_nextmap, "", g_forceNextMap, false)
-FAKE_FLOAT_CVAR(cs2f_mapcycle_change_time, "", g_mapChangeTime, 15.0f, false)
-FAKE_STRING_CVAR(cs2f_mapcycle_workshop_name_type, "", g_workshopNameType, false)
-FAKE_BOOL_CVAR(cs2f_mapcycle_random, "", g_randomMapCycle, true, false)
+CConVar<int> g_cvarIndex("cs2f_mapcycle_index", FCVAR_NONE, "Skin Enable", 1);
+CConVar<CUtlString> g_cvarNextMap("cs2f_mapcycle_nextmap", FCVAR_NONE, "Skin Enable", "");
+CConVar<float> g_cvarChangeTime("cs2f_mapcycle_change_time", FCVAR_NONE, "Skin Enable", 15.0f);
+CConVar<CUtlString> g_cvarWorkshopNameType("cs2f_mapcycle_workshop_name_type", FCVAR_NONE, "Skin Enable", "source_folder");
+CConVar<bool> g_cvarRandom("cs2f_mapcycle_random", FCVAR_NONE, "Skin Enable", true);
 
 CUtlVector<string> g_mapList;
 
@@ -42,16 +36,16 @@ CON_COMMAND_F(cs2f_mapcycle_list, "Show Mapcycle List", FCVAR_LINKED_CONCOMMAND 
 	}
 }
 
-CON_COMMAND_CHAT(nextmap, "- show nextmap")
-{
-	if (!player)
-	{
-		ClientPrint(player, HUD_PRINTCONSOLE, "You cannot use this command from the server console.");
-		return;
-	}
-
-	ClientPrintAll(HUD_PRINTTALK, " \x04[Next Map]\x01 %s", GetMapName(g_mapList[g_mapListIndex].c_str()));
-}
+//CON_COMMAND_CHAT(nextmap, "- show nextmap")
+//{
+//	if (!player)
+//	{
+//		ClientPrint(player, HUD_PRINTCONSOLE, "You cannot use this command from the server console.");
+//		return;
+//	}
+//
+//	ClientPrintAll(HUD_PRINTTALK, " \x04[Next Map]\x01 %s", GetMapName(g_mapList[g_cvarIndex.Get()].c_str()));
+//}
 
 void ChangeLevel(string mapName)
 {
@@ -88,7 +82,7 @@ void LoadMapCycle(bool force)
 			g_mapList.AddToTail(mapName);
 		}
 
-		if (g_randomMapCycle)
+		if (g_cvarRandom.Get())
 		{
 			g_mapList.Sort([](const string* a, const string* b)
 			{
@@ -126,18 +120,19 @@ string GetMapName(string mapName)
 
 void MapCycle_OnGameEnd()
 {
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Next Map]\x01 %s", GetMapName(g_mapList[g_mapListIndex].c_str()));
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Next Map]\x01 %s", GetMapName(g_mapList[g_cvarIndex.Get()].c_str()));
 
-	int mapIndex = g_mapListIndex;
-	new CTimer(g_mapChangeTime, false, false, [mapIndex]()
+	int mapIndex = g_cvarIndex.Get();
+	
+	CTimer::Create(g_cvarChangeTime.Get(), TIMERFLAG_MAP | TIMERFLAG_ROUND, [mapIndex]()
 	{
-		const char* nextMapName = g_forceNextMap.size() == 0 ? g_mapList[mapIndex].c_str() : g_forceNextMap.c_str();
+		const char* nextMapName = g_cvarNextMap.Get().String()[0] == '\0' ? g_mapList[mapIndex].c_str() : g_cvarNextMap.Get().String();
 
 		ChangeLevel(nextMapName);
 		return -1.0f;
 	});
 
-	g_mapListIndex++;
-	if (g_mapListIndex >= g_mapList.Count())
-		g_mapListIndex = 0;
+	g_cvarIndex.Set(g_cvarIndex.Get());
+	if (g_cvarIndex.Get() >= g_mapList.Count())
+		g_cvarIndex.Set(0);
 }

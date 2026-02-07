@@ -1,4 +1,4 @@
-﻿/**
+/**
  * =============================================================================
  * CS2Fixes
  * Copyright (C) 2023-2025 Source2ZE
@@ -122,8 +122,8 @@ int64 FASTCALL Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageI
 	if (g_cvarBlockAllDamage.Get() && pThis->IsPawn())
 		return 1;
 
-	if (!vsBots_Detour_CBaseEntity_TakeDamageOld(pThis, inputInfo))
-		return;
+	if (!vsBots_Detour_CBaseEntity_TakeDamageOld(pThis, pInfo))
+		return 1;
 
 	CEntityInstance* pInflictor = pInfo->m_hInflictor.Get();
 	const char* pszInflictorClass = pInflictor ? pInflictor->GetClassname() : "";
@@ -398,7 +398,7 @@ void FASTCALL Detour_UTIL_SayText2Filter(
 
 bool FASTCALL Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon)
 {
-	if (!vsBots_Detour_CCSPlayer_WeaponServices_CanUse(pWeaponServices, pPlayerWeapon))
+	if (!EW_Detour_CCSPlayer_WeaponServices_CanUse(pWeaponServices, pPlayerWeapon))
 	{
 		return false;
 	}

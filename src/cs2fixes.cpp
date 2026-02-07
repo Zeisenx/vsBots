@@ -647,7 +647,6 @@ void CS2Fixes::Hook_StartupServer(const GameSessionConfiguration_t& config, ISou
 	g_bHasTicked = false;
 
 	g_pPanoramaVoteHandler->Reset();
-	VoteManager_Init();
 	SaySound_Init();
 
 	g_pVoteManager->VoteManager_Init();

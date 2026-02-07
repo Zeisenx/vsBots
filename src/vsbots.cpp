@@ -19,7 +19,6 @@ BotProfileManager* g_pTheBotProfiles = nullptr;
 
 extern IVEngineServer2* g_pEngineServer2;
 extern CCSGameRules* g_pGameRules;
-extern CGlobalVars* gpGlobals;
 
 #define BOSSMODEL_DEFAULT "characters/models/tm_phoenix_heavy/tm_phoenix_heavy.vmdl"
 
@@ -66,12 +65,9 @@ int g_botTeam = CS_TEAM_T;
 
 bool g_bScoreboardRankUpdate = true;
 
-int g_iSwitchChance = 50;
-int g_iDifficulty = DIFFICULTY_MIN;
-bool g_bPlayerGlowEnabled = false;
-FAKE_INT_CVAR(vsbots_switchchance, "Switch chance", g_iSwitchChance, 50, false)
-FAKE_INT_CVAR(vsbots_difficulty, "Bot Difficulty", g_iDifficulty, DIFFICULTY_MIN, false)
-FAKE_BOOL_CVAR(vsbots_player_glow, "Player Glow", g_bPlayerGlowEnabled, false, false)
+CConVar<int> g_cvarSwitchChance("cs2f_mapcycle_index", FCVAR_NONE, "Skin Enable", 50);
+CConVar<int> g_cvarDifficulty("cs2f_mapcycle_nextmap", FCVAR_NONE, "Skin Enable", DIFFICULTY_MIN);
+CConVar<bool> g_cvarPlayerGlow("cs2f_mapcycle_change_time", FCVAR_NONE, "Skin Enable", false);
 
 KeyValues* g_pKVPrintText;
 
@@ -92,7 +88,7 @@ void vsBots_OnLevelInit(char const* pMapName)
 	char cmdFmt[128];
 
 	bool isHumanTSide = strncmp(pMapName, "de_", 3) == 0;
-	if (rand() % 100 < g_iSwitchChance)
+	if (rand() % 100 < g_cvarSwitchChance.Get())
 		isHumanTSide = !isHumanTSide;
 
 	if (isHumanTSide)
@@ -255,7 +251,7 @@ void vsBots_OnRoundStart(IGameEvent* pEvent)
 void vsBots_OnRoundFreezeEnd(IGameEvent* pEvent)
 {
 	ClientPrintAll(HUD_PRINTTALK, "\x01 \x04[Zeisen Project Discord]\x01 https://discord.gg/tDZUnpaumD");
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Bot Level]\x01 %d", g_iDifficulty);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Bot Level]\x01 %d", g_cvarDifficulty.Get());
 	CPrintChatToAll(g_pKVPrintText->GetString("Message_WeaponRestrict", "Weapon Restrict"));
 }
 
@@ -265,15 +261,15 @@ void vsBots_OnRoundEnd(IGameEvent* pEvent)
 	if (winner <= 1)
 		return;
 	
-	int oldLevel = g_iDifficulty;
+	int oldLevel = g_cvarDifficulty.Get();
 	if (winner == g_humanTeam)
-		g_iDifficulty = MIN(DIFFICULTY_MAX, g_iDifficulty + 1);
+		g_cvarDifficulty.Set(MIN(DIFFICULTY_MAX, g_cvarDifficulty.Get() + 1));
 	else
-		g_iDifficulty = MAX(DIFFICULTY_MIN, g_iDifficulty - 1);
+		g_cvarDifficulty.Set(MAX(DIFFICULTY_MIN, g_cvarDifficulty.Get() - 1));
 
-	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_iDifficulty);
+	ClientPrintAll(HUD_PRINTTALK, "\x01 \x02[Level]\x01 %d → %d", oldLevel, g_cvarDifficulty.Get());
 
-	for (int i = 0; i < gpGlobals->maxClients; i++)
+	for (int i = 0; i < GetGlobals()->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
 		if (!pController || !pController->IsConnected())
@@ -304,28 +300,28 @@ void RestrictWeapons(CCSPlayerPawn* pPawn)
 
 void RestrictWeapon(CCSPlayerPawn* pPawn, int itemDefIndex)
 {
-	CUtlVector<WeaponPurchaseCount_t>* weaponPurchases = pPawn->m_pActionTrackingServices->m_weaponPurchasesThisRound().m_weaponPurchases;
-	bool found = false;
-	FOR_EACH_VEC(*weaponPurchases, i)
-	{
-		WeaponPurchaseCount_t& purchase = (*weaponPurchases)[i];
-		if (purchase.m_nItemDefIndex == itemDefIndex)
-		{
-			purchase.m_nCount += 999;
-			found = true;
-			break;
-		}
-	}
+	//CUtlVector<WeaponPurchaseCount_t>* weaponPurchases = pPawn->m_pActionTrackingServices->m_weaponPurchasesThisRound().m_weaponPurchases;
+	//bool found = false;
+	//FOR_EACH_VEC(*weaponPurchases, i)
+	//{
+	//	WeaponPurchaseCount_t& purchase = (*weaponPurchases)[i];
+	//	if (purchase.m_nItemDefIndex == itemDefIndex)
+	//	{
+	//		purchase.m_nCount += 999;
+	//		found = true;
+	//		break;
+	//	}
+	//}
 
-	if (!found)
-	{
-		WeaponPurchaseCount_t purchase = {};
+	//if (!found)
+	//{
+	//	WeaponPurchaseCount_t purchase = {};
 
-		purchase.m_nCount = 999;
-		purchase.m_nItemDefIndex = itemDefIndex;
+	//	purchase.m_nCount = 999;
+	//	purchase.m_nItemDefIndex = itemDefIndex;
 
-		weaponPurchases->AddToTail(purchase);
-	}
+	//	weaponPurchases->AddToTail(purchase);
+	//}
 }
 
 // @Todo : Clean up this shit, I guess no one can read this expect me
@@ -335,7 +331,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		return;
 	
 	CHandle<CCSPlayerController> handle = pController->GetHandle();
-	new CTimer(0.0f, false, false, [handle]()
+	CTimer::Create(0.0, TIMERFLAG_MAP | TIMERFLAG_ROUND, [handle]()
 	{
 		CCSPlayerController* pController = (CCSPlayerController*)handle.Get();
 		if (!pController)
@@ -359,7 +355,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 
 		if (pController->m_iTeamNum == g_humanTeam)
 		{
-			int health = MAX(100, g_iDifficulty == 0 ? 999 : (500 - 50 * (g_iDifficulty - 1)));
+			int health = MAX(100, g_cvarDifficulty.Get() == 0 ? 999 : (500 - 50 * (g_cvarDifficulty.Get() - 1)));
 			SetHumanHealth();
 
 			if (!g_pGameRules->m_bWarmupPeriod)
@@ -368,7 +364,7 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 			RestrictWeapons(pPawn);
 
 			ZEPlayer* pPlayerTarget = pController->GetZEPlayer();
-			if (g_bPlayerGlowEnabled && !pPlayerTarget->GetGlowModel())
+			if (g_cvarPlayerGlow.Get() && !pPlayerTarget->GetGlowModel())
 				pPlayerTarget->StartGlow(Color(0, 255, 0, 255), -1);
 
 			if (pController->IsBot())
@@ -396,12 +392,12 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		BotProfile* pBotProfile = pBot->GetLocalProfile();
 		if (pController->m_iTeamNum == g_botTeam)
 		{
-			float skill = MIN(1.0f, 0.2f + 0.08f * (g_iDifficulty-1));
+			float skill = MIN(1.0f, 0.2f + 0.08f * (g_cvarDifficulty.Get()-1));
 			pBotProfile->m_skill = skill;
 			pBotProfile->m_aggression = skill;
 			pBotProfile->m_teamwork = 0.5f;
 
-			float reactionTime = MAX(0.0f, 3.0f - 0.3f * (g_iDifficulty-1));
+			float reactionTime = MAX(0.0f, 3.0f - 0.3f * (g_cvarDifficulty.Get()-1));
 			pBotProfile->m_reactionTime = reactionTime;
 			pBotProfile->m_attackDelay = reactionTime;
 		}
@@ -444,12 +440,12 @@ void vsBots_OnPlayerSpawn(CCSPlayerController *pController)
 		if (V_strncmp(pBot->m_name, "[Boss] Stone", 12) == 0)
 		{
 			pPawn->m_clrRender = Color(0, 0, 0, 255);
-			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_iDifficulty) - 1));
+			UTIL_AddEntityIOEvent(pPawn, "SetScale", nullptr, nullptr, 1.0 + 0.12 * (MAX(1, g_cvarDifficulty.Get()) - 1));
 
-			int health = 600 + g_iDifficulty * 400;
+			int health = 600 + g_cvarDifficulty.Get() * 400;
 			pPawn->m_iHealth = health;
 
-			pController->GetZEPlayer()->SetSpeedMod(1.0 + g_iDifficulty * 0.03);
+			pController->GetZEPlayer()->SetSpeedMod(1.0 + g_cvarDifficulty.Get() * 0.03);
 		}
 
 		if (V_strncmp(pBot->m_name, "[Boss] Exp203", 13) == 0)
@@ -485,7 +481,7 @@ bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo
 
 	if (pVictimPawn != pAttackerPawn)
 	{
-		CBaseEntity* pInflictor = inputInfo->m_hInflictor.Get();
+		CEntityInstance* pInflictor = inputInfo->m_hInflictor.Get();
 		const char* pszInflictorClass = pInflictor ? pInflictor->GetClassname() : "";
 		if (V_strncmp(pszInflictorClass, "player", 6) == 0)
 		{
@@ -511,7 +507,7 @@ bool vsBots_Detour_CBaseEntity_TakeDamageOld(CBaseEntity* pThis, CTakeDamageInfo
 	if (pAttackerController->IsBot())
 	{
 		if (V_strcmp(pAttackerController->GetPlayerName(), "[Boss] Crusher") == 0)
-			inputInfo->m_flDamage *= 1.0f + g_iDifficulty;
+			inputInfo->m_flDamage *= 1.0f + g_cvarDifficulty.Get();
 
 		if (V_strcmp(pAttackerController->GetPlayerName(), "[Boss] Stone") == 0)
 			inputInfo->m_flDamage = 9999.0f;
@@ -551,7 +547,8 @@ void vsBots_OnPlayerHurt(IGameEvent* pEvent)
 			float regenTime = 0.5f;
 
 			CHandle<CCSPlayerController> victimHandle = pVictim->GetHandle();
-			new CTimer(regenTime, false, false, [victimHandle]()
+
+			CTimer::Create(regenTime, TIMERFLAG_MAP | TIMERFLAG_ROUND, [victimHandle]()
 			{
 				CCSPlayerController* pVictim = (CCSPlayerController*)victimHandle.Get();
 				if (!pVictim || !pVictim->IsAlive())
@@ -632,17 +629,17 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 				pVictimPawn->EmitSound("tr.Countdown");
 
 				CHandle<CCSPlayerPawn> victimHandle = pVictimPawn->GetHandle();
-				new CTimer(1.0f, false, false, []()
+				CTimer::Create(1.0f, TIMERFLAG_MAP | TIMERFLAG_ROUND, []()
 				{
 					CPrintChatToAll(g_pKVPrintText->GetString("Message_Exp203_Explode_2secs", "Exp203_Explode_2Secs"));
 					return -1.0f;
 				});
-				new CTimer(2.0f, false, false, []()
+				CTimer::Create(2.0f, TIMERFLAG_MAP | TIMERFLAG_ROUND, []()
 				{
 					CPrintChatToAll(g_pKVPrintText->GetString("Message_Exp203_Explode_1sec", "Exp203_Explode_1Sec"));
 					return -1.0f;
 				});
-				new CTimer(3.0f, false, false, [victimHandle, origin]()
+				CTimer::Create(3.0f, TIMERFLAG_MAP | TIMERFLAG_ROUND, [victimHandle, origin]()
 				{
 					CCSPlayerPawn* pVictimPawn = (CCSPlayerPawn*)victimHandle.Get();
 					if (!pVictimPawn)
@@ -656,7 +653,8 @@ void vsBots_OnPlayerDeath(IGameEvent* pEvent)
 					pKeyValues->SetInt("iRadiusOverride", 9999);
 
 					pExplosion->m_iTeamNum = pVictimPawn->m_iTeamNum;
-					pExplosion->m_hOwnerEntity.Set(pVictimPawn);
+					/// 나중에해
+					//pExplosion->m_hOwnerEntity.Set(pVictimPawn->GetHandle().Get());
 
 					Vector explosionOrigin = origin;
 					explosionOrigin.z += 30.0f;
@@ -798,7 +796,7 @@ void vsBots_BulletImpact(IGameEvent* pEvent)
 
 bool vsBots_Detour_CCSPlayer_WeaponServices_CanUse(CCSPlayer_WeaponServices* pWeaponServices, CBasePlayerWeapon* pPlayerWeapon)
 {
-	CCSPlayerPawn* pPawn = pWeaponServices->__m_pChainEntity();
+	CCSPlayerPawn* pPawn = pWeaponServices->GetPawn();
 	if (!pPawn)
 		return false;
 
@@ -859,7 +857,7 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 			pBot->m_fireWeaponTimestamp().SetTime(0.0f);
 
 			pPawn->m_iShotsFired = 0;
-			if (g_iDifficulty >= 9)
+			if (g_cvarDifficulty.Get() >= 9)
 			{
 				pWeaponServices->m_flNextAttack().SetTime(0.0);
 				pWeapon->m_nNextPrimaryAttackTick = 1;
@@ -880,12 +878,11 @@ void vsBots_Detour_ProcessMovement(CCSPlayer_MovementServices* pThis)
 				return;
 
 			pPawn->m_iShotsFired = 0;
-			float notSeenEnemyTime = gpGlobals->curtime - pBot->m_lastSawEnemyTimestamp;
-			if (notSeenEnemyTime <= 3.0f &&
-				gpGlobals->curtime >= pWeaponServices->m_flNextAttack().GetTime())
+			float notSeenEnemyTime = GetGlobals()->curtime - pBot->m_lastSawEnemyTimestamp;
+			if (notSeenEnemyTime <= 3.0f && GetGlobals()->curtime >= pWeaponServices->m_flNextAttack().GetTime())
 				pThis->m_nButtons().m_pButtonStates[0] |= IN_ATTACK;
 
-			if (g_iDifficulty >= 10)
+			if (g_cvarDifficulty.Get() >= 10)
 			{
 				pWeapon->m_fAccuracyPenalty = 0.0;
 				pPawn->m_aimPunchAngle = QAngle(0, 0, 0);
@@ -1007,7 +1004,7 @@ void vsBots_OnTick()
 	if (!g_bScoreboardRankUpdate)
 		return;
 	
-	for (int i = 0; i < gpGlobals->maxClients; i++)
+	for (int i = 0; i < GetGlobals()->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
 		if (!pController || !pController->IsConnected())
@@ -1037,11 +1034,11 @@ void vsBots_OnTick()
 
 				int rank = 18;
 				if (V_strcmp(pController->GetPlayerName(), "[Boss] Crusher") == 0)
-					rank = g_iDifficulty >= 9 ? 18 : 17;
+					rank = g_cvarDifficulty.Get() >= 9 ? 18 : 17;
 				if (V_strcmp(pController->GetPlayerName(), "[Boss] Stone") == 0)
-					rank = g_iDifficulty >= 11 ? 17 : 16;
+					rank = g_cvarDifficulty.Get() >= 11 ? 17 : 16;
 				if (V_strcmp(pController->GetPlayerName(), "[Boss] Exp203") == 0)
-					rank = g_iDifficulty >= 10 ? 17 : 16;
+					rank = g_cvarDifficulty.Get() >= 10 ? 17 : 16;
 
 				pController->m_iCompetitiveRanking = rank;
 			}
@@ -1177,7 +1174,7 @@ void VSBots::SaveDB()
 
 	Transaction txn;
 
-	for (int i = 0; i < gpGlobals->maxClients; i++)
+	for (int i = 0; i < GetGlobals()->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
 		if (!pController || pController->IsBot())
@@ -1209,7 +1206,7 @@ void VSBots::SaveDB()
 
 void EmitSoundToAll(const char* szPath, float volume)
 {
-	for (int i = 0; i < gpGlobals->maxClients; i++)
+	for (int i = 0; i < GetGlobals()->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
 		if (!pController || !pController->IsConnected() || pController->IsBot())
@@ -1223,7 +1220,7 @@ void EmitSoundToAll(const char* szPath, float volume)
 int GetHumanCount()
 {
 	int playerCount = 0;
-	for (int i = 0; i < gpGlobals->maxClients; i++)
+	for (int i = 0; i < GetGlobals()->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
 		if (!pController || !pController->IsConnected() || pController->IsBot() || pController->m_iTeamNum() != g_humanTeam)
@@ -1241,7 +1238,7 @@ void SetHumanHealth()
 
 	int health = MAX(200, 500 - 30 * (playerCount - 1));
 
-	for (int i = 0; i < gpGlobals->maxClients; i++)
+	for (int i = 0; i < GetGlobals()->maxClients; i++)
 	{
 		CCSPlayerController* pController = CCSPlayerController::FromSlot(i);
 		if (!pController || !pController->IsConnected() || pController->m_iTeamNum() != g_humanTeam)
